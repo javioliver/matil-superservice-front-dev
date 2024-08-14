@@ -5,9 +5,9 @@
 //REACT
 import { useState, useEffect, useRef } from "react"
 import { useNavigate } from "react-router-dom"
-//CONEXT
 import { useAuth } from "../../../AuthContext" 
 import { useSession } from "../../../SessionContext"
+import { useTranslation } from 'react-i18next'
 //FETCH DATA
 import fetchData from "../../API/fetchData"
 import LoadingIconButton from "../../Components/LoadingIconButton"
@@ -43,6 +43,9 @@ const getFirstView = (views:Views) => {
  
 //MAIN FUNCTION
 function TicketsTable({socket}:{socket:any}) {
+
+    //TRANSLATION
+    const { t } = useTranslation('tickets')
 
     //CONSTANTS
     const auth = useAuth()
@@ -94,7 +97,6 @@ function TicketsTable({socket}:{socket:any}) {
             const ticketsList = session.sessionData.ticketsTable
             const foundTicket = ticketsList.find(ticket => ticket.view.view_type === selectedView.type && ticket.view.view_index === selectedView.index)
 
-            
             //SECTION FOUND
             if (foundTicket){
                 setTickets(foundTicket.data)
@@ -191,18 +193,18 @@ function TicketsTable({socket}:{socket:any}) {
             <>
                 <Box ref={scrollRef} overflowY={'scroll'} height={'100%'} px='3px'  >
                     <Flex justifyContent={'space-between'} alignItems={'center'}>
-                        <Text fontWeight={'medium'} fontSize='1.2em'>Filtrar</Text>
+                        <Text fontWeight={'medium'} fontSize='1.2em'>{t('Filter')}</Text>
                         <IconButton icon={<RxCross2 />} aria-label='hide-filters' onClick={() => setShowFilters(false)} size='sm' isRound bg='transparent' borderWidth={'0px'} />
                     </Flex>
                     <Box width={'100%'} mt='2vh' mb='2vh'  height={'1px'} bg='gray.300' />
-                    <Text fontSize={'1em'} mb='1vh' fontWeight={'medium'}>Por coincidencia de texto</Text>
+                    <Text fontSize={'1em'} mb='1vh' fontWeight={'medium'}>{t('TextMatch')}</Text>
                     <EditText value={text} setValue={setText} searchInput={true} />
                 </Box>
                 <Box>
                     <Box width={'100%'} mt='2vh' mb='2vh' height={'1px'} bg='gray.300' />
                     <Flex flexDir={'row-reverse'} gap='20px'>
-                        <Button size='sm' onClick={sendFilters} bg='brand.gradient_blue' color='white' _hover={{bg:'brand.gradient_blue_hover'}}>{waitingSendFilters?<LoadingIconButton/>:'Aplicar filtros'}</Button>
-                        <Button size='sm' color='red' _hover={{ color: 'red.600' }} onClick={() => setShowFilters(false)}>Cancelar</Button>
+                        <Button size='sm' onClick={sendFilters} bg='brand.gradient_blue' color='white' _hover={{bg:'brand.gradient_blue_hover'}}>{waitingSendFilters?<LoadingIconButton/>:t('ApplyFilters')}</Button>
+                        <Button size='sm' color='red' _hover={{ color: 'red.600' }} onClick={() => setShowFilters(false)}>{t('Cancel')}</Button>
                     </Flex>
                 </Box>
             </>
@@ -217,13 +219,13 @@ function TicketsTable({socket}:{socket:any}) {
         <Flex zIndex={100}  px='1vw' gap='20px' py='2vh' bg='gray.50' width={'320px'} flexDir={'column'} justifyContent={'space-between'} borderRightWidth={'1px'} borderRightColor='gray.200' >
             <Flex justifyContent={'space-between'} flexDir={'column'} flex='1' minH={0}>  
                 <Box> 
-                    <Text fontSize={'1.4em'} fontWeight={'medium'}>Vistas</Text>
+                    <Text fontSize={'1.4em'} fontWeight={'medium'}>{t('Views')}</Text>
                     <Box width={'100%'} mt='1vh' mb='2vh' height={'1px'} bg='gray.300'/>
                 </Box>
                 <Box height={'100px'} flex='1' overflow={'scroll'}>
-                    <Text fontSize='1.1em' fontWeight={'medium'} mb='1vh'>Vistas privadas</Text>
-                    {auth.authData.views && 'private_views' in auth.authData.views ? 
-                        <Box> 
+                     {(auth.authData.views && 'private_views' in auth.authData.views && auth.authData.views.private_views.length > 0 ) && <>
+                        <Text fontSize='1.1em' fontWeight={'medium'} mb='1vh'>{t('PrivateViews')}</Text>
+                        <Box mb='4vh'> 
                             {auth.authData.views.private_views.map((view, index) => {
                                 const isSelected = selectedView.index === index && selectedView.type === 'private'
                                 return(
@@ -232,12 +234,11 @@ function TicketsTable({socket}:{socket:any}) {
                                         <Text>{auth.authData.views?.number_of_tickets_per_private_view?.[index] || 0}</Text>
                                     </Flex>
                                     )
-                                })}
+                            })}
                         </Box>
-                    : <Text>No hay vistas privadas</Text>}
-                    <Text fontSize='1.1em' fontWeight={'medium'} mb='1vh' mt='4vh'>Vistas compartidas</Text>
-                    {auth.authData.views && 'shared_views' in auth.authData.views ? 
-            
+                    </>}
+                    {(auth.authData.views && 'shared_views' in auth.authData.views && auth.authData.views.shared_views.length > 0 ) &&   <>
+                        <Text fontSize='1.1em' fontWeight={'medium'} mb='1vh' >{t('PublicViews')}</Text>
                         <Box> 
                             {auth.authData.views.shared_views.map((view, index) => {
                             const isSelected = selectedView.index === index && selectedView.type === 'shared'
@@ -249,7 +250,7 @@ function TicketsTable({socket}:{socket:any}) {
                                 )
                             })}
                         </Box>
-                    : <Text>No hay vistas privadas</Text>}
+                    </>}
                 </Box>
             </Flex>
 
@@ -257,14 +258,14 @@ function TicketsTable({socket}:{socket:any}) {
                 <Flex  color='red' onClick={() => {setSelectedView({index:0, type:'deleted', name:'Papelera'}); localStorage.setItem('currentView', JSON.stringify({index:0, type:'deleted', name:'Papelera'}))}} justifyContent={'space-between'} _hover={{bg:selectedView.type === 'deleted'?'blue.100':'gray.200'}} bg={selectedView.type === 'deleted'? 'blue.100':'transparent'} fontWeight={selectedView.type === 'deleted'? 'medium':'normal'}fontSize={'1em'} cursor={'pointer'} borderRadius={'.5rem'} p='8px'>
                     <Flex gap='10px' alignItems={'center'}> 
                         <Icon boxSize={'12px'} as={BsTrash3Fill}/>
-                        <Text mt='2px' >Papelera de tickets</Text>
+                        <Text mt='2px' >{t('Trash')}</Text>
                     </Flex>
                     <Text>{auth.authData.views?.number_of_tickets_in_bin || 0}</Text>
                 </Flex>
 
                 <Box width={'100%'} mt='2vh' mb='2vh' height={'1px'} bg='gray.300' />
                 <Flex mb='1vh' height={'25px'} onClick={() => navigate('/settings/people/edit-views')} color='blue.600' alignItems={'center'} mt='2vh' gap='7px' cursor={'pointer'} _hover={{color:'blue.700', textDecor:'underline'}}> 
-                    <Text fontSize={'.9em'} ml='7px'>Editar vistas</Text>
+                    <Text fontSize={'.9em'} ml='7px'>{t('EditViews')}</Text>
                     <Icon as={FaRegEdit} boxSize={'13px'}/>
                 </Flex>
             </Box>
@@ -276,7 +277,7 @@ function TicketsTable({socket}:{socket:any}) {
                 <Text flex='1' minW={0} fontWeight={'medium'} fontSize={'1.5em'} whiteSpace={'nowrap'} textOverflow={'ellipsis'} overflow={'hidden'}>{selectedView.name}</Text>
                 <ActionsButton items={tickets?.page_data} view={selectedView} section={'tickets'} />
             </Flex>
-            <Button mt='2vh' onClick={() => {setShowFilters(true) }} leftIcon={<HiMiniAdjustmentsHorizontal />} fontSize={'1em'} size='sm' fontWeight={'medium'}  _hover={{ color: 'blue.500' }}>Filtrar</Button>
+            <Button mt='2vh' onClick={() => {setShowFilters(true) }} leftIcon={<HiMiniAdjustmentsHorizontal />} fontSize={'1em'} size='sm' fontWeight={'medium'}  _hover={{ color: 'blue.500' }}>{t('Filter')}</Button>
             
             <Skeleton  isLoaded={!waitingInfo} >
                 <Text mt='2vh'>{tickets?.total_tickets} ticket{tickets?.total_tickets === 1 ? '' : 's'}</Text> 

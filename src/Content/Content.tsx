@@ -7,6 +7,7 @@ import { useRef, useState, useEffect, useLayoutEffect, ElementType, Suspense, la
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom"
 import { useAuth } from '../AuthContext'
 import { useSession } from '../SessionContext'
+import { useTranslation } from 'react-i18next'
 //FETCH DATA
 import fetchData from './API/fetchData'
 import io from 'socket.io-client'
@@ -28,9 +29,9 @@ import SendFeedBack from './Components/SendFeedback'
 import useOutsideClick from './Functions/clickOutside'
 import DetermineTicketViews from './MangeData/DetermineTicketViews'
 //ICONS
-import { IoFileTrayFull, IoChatboxOutline, IoPersonOutline, IoLogOutOutline } from "react-icons/io5" 
+import { IoFileTrayFull, IoChatboxOutline, IoPersonOutline } from "react-icons/io5" 
 import { BsFillPersonLinesFill, BsBarChartFill, BsBuildings, BsFillTelephoneInboundFill, BsFillTelephoneMinusFill, BsFillTelephoneXFill } from "react-icons/bs"
-import { FaPlus, FaRegKeyboard, FaArrowRightToBracket,FaBoxOpen } from "react-icons/fa6"
+import { FaPlus, FaArrowRightToBracket } from "react-icons/fa6"
 import { IoIosSettings, IoIosArrowDown } from "react-icons/io"
 import { RxCross2 } from "react-icons/rx"
 import { FiPlus } from "react-icons/fi"
@@ -38,22 +39,28 @@ import { BiSolidBuildings } from 'react-icons/bi'
 import { PiBuildingApartmentFill, PiKeyReturn } from "react-icons/pi"
 import { TbArrowBack } from 'react-icons/tb'
 import { VscFeedback } from "react-icons/vsc"
+import { TiFlowMerge } from "react-icons/ti"
 //TYPING 
 import { Organization, TicketData, userInfo, Views } from './Constants/typing'
 import { IconType } from 'react-icons'
+import { t } from 'i18next'
  
 //MAIN SECTIONS
 const TicketsTable = lazy(() => import('./Sections/Tickets/TicketsTable'))
 const ClientsTable = lazy(() => import('./Sections/Clients/ClientsTable'))
-const Client = lazy(() => import('./Sections/Clients/Client'))
+const FlowsTable = lazy(() => import('./Sections/Flows/FlowsTable'))
 const ContactBusinessesTable = lazy(() => import('./Sections/Businesses/BusinessesTable'))
+const Ticket = lazy(() => import('./Sections/Tickets/Ticket'))
+const Client = lazy(() => import('./Sections/Clients/Client'))
 const Business = lazy(() => import('./Sections/Businesses/Business'))
+const Flow = lazy(() => import('./Sections/Flows/Flow'))
 const Stats = lazy(() => import('./Sections/Stats/Stats'))
 const Settings = lazy(() => import('./Sections/Settings/Settings'))
-const Ticket = lazy(() => import('./Sections/Tickets/Ticket'))
+ 
+
  
 //TYPING
-type SectionKey = 'tickets' | 'clients' | 'contact-businesses' | 'stats' | 'settings'
+type SectionKey = 'tickets' | 'clients' | 'contact-businesses' | 'stats' | 'flows' | 'settings'
 interface NavBarItemProps {
     icon: ElementType
     section: SectionKey
@@ -76,6 +83,10 @@ function Content ({userInfo}:{userInfo:userInfo}) {
  
     //SOCKET
     const socket = useRef<any>(null)
+
+    //TRANSLATION
+    const { i18n } = useTranslation()
+    const { t } = useTranslation('main')
 
     //IMPORTANT REACT CONSTANTS
     const auth = useAuth()
@@ -389,25 +400,27 @@ function Content ({userInfo}:{userInfo:userInfo}) {
    
     const memoizedCallWidget = useMemo(() => <CallWidget />, [])
 
+    const isHeaderSection =  location.startsWith('/ticket') || location.startsWith('/client') || location.startsWith('/contact-businesses') || location === '/flows'
+    
     //FRONT 
     return(<> 
         {socket.current ? 
-
 
         <Flex width={'100vw'} height={'100vh'} overflow={'hidden'}> 
 
             {memoizedCallWidget}
         
             {/*SIDEBAR*/}
-            <Flex flexDir='column'  alignItems='center' justifyContent='space-between' height={'100vh'} width='60px' py='3vh' bg='gray.100' borderRightColor={'gray.300'} borderRightWidth={'1px'}>
+            <Flex flexDir='column'  alignItems='center' justifyContent='space-between' height={'100vh'} width='60px' py='3vh' bg='gray.50' borderRightColor={'gray.300'} borderRightWidth={'1px'}>
                 <Flex alignItems='center' flexDir='column'>
-                    <Box >
+                    <Box onClick={() => i18n.changeLanguage('en')}>
                         <Image src='/images/Isotipo.svg' height={'22px'} width={'22px'} alt='logo'/>
                     </Box>
                     <Box mt='4vh' width='100%'> 
                         <NavBarItem icon={IoFileTrayFull} section={'tickets'}/>
                         <NavBarItem icon={BsFillPersonLinesFill} section={'clients'}/>
                         <NavBarItem icon={PiBuildingApartmentFill} section={'contact-businesses'}/>
+                        {isAdmin && <NavBarItem icon={TiFlowMerge} section={'flows'}/>}
                         {isAdmin && <NavBarItem icon={BsBarChartFill} section={'stats'}/>}
                     </Box>
                 </Flex>
@@ -423,9 +436,9 @@ function Content ({userInfo}:{userInfo:userInfo}) {
  
                 {/*HEADER ELEMENTS*/}
                 <motion.div
-                    initial={{ y: !(location.startsWith('/ticket') || location.startsWith('/client') || location.startsWith('/contact-businesses')) ? -60 : 0 }}
-                    animate={{ y: !(location.startsWith('/ticket') || location.startsWith('/client') || location.startsWith('/contact-businesses')) ? -60 : 0 }}
-                    exit={{ y: !(location.startsWith('/ticket') || location.startsWith('/client') || location.startsWith('/contact-businesses')) ? -60 : 0 }}
+                    initial={{ y: !isHeaderSection ? -60 : 0 }}
+                    animate={{ y: !isHeaderSection ? -60 : 0 }}
+                    exit={{ y: !isHeaderSection ? -60 : 0 }}
                     transition={{ duration: 0.2 }}
                     style={{  height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}
                 >
@@ -436,7 +449,7 @@ function Content ({userInfo}:{userInfo:userInfo}) {
                                 <Flex width='100%' ref={provided.innerRef} {...provided.droppableProps} height="100%">
                                     {headerSections.length === 0?
                                         <Flex height="100%" justifyContent={'space-between'} alignItems='center' minW='120px' maxW='280px' bg={'gray.50'}  borderColor='gray.200' borderBottomWidth={'1px'}  px='15px'cursor='pointer' >
-                                            <Text fontSize={'.8em'} fontWeight={'medium'}>No hay secciones guardadas</Text>
+                                            <Text fontSize={'.8em'} fontWeight={'medium'}>{t('NoSections')}</Text>
                                         </Flex>
                                         :
                                     <>
@@ -467,7 +480,7 @@ function Content ({userInfo}:{userInfo:userInfo}) {
                                                 <Box height='100%'  px='10px' borderColor='gray.200' borderBottomWidth='1px'>
                                                     <Flex height='100%' alignItems='center' >
                                                         <Flex ref={showMoreHeaderSectionsButtonRef} justifyContent='center' onClick={() => setShowMoreHeaderSectionsBox(!showMoreHeaderSectionsBox)} alignItems='center' gap='5px' p='4px' fontSize='sm' borderRadius='.4rem' _hover={{ bg: 'gray.200' }} cursor='pointer'>
-                                                            <Text fontSize={'sm'}>Más</Text>
+                                                            <Text fontSize={'sm'}>{t('More')}</Text>
                                                             <Icon as={IoIosArrowDown} className={showMoreHeaderSectionsBox ? "rotate-icon-up" : "rotate-icon-down"}/>
                                                         </Flex>
                                                     </Flex>
@@ -509,9 +522,9 @@ function Content ({userInfo}:{userInfo:userInfo}) {
             
                 {/*SECTIONS*/}
                 <motion.div
-                    initial={{ y: !(location.startsWith('/ticket') || location.startsWith('/client') || location.startsWith('/contact-businesses')) ? -60 : 0 }}
-                    animate={{ y: !(location.startsWith('/ticket') || location.startsWith('/client') || location.startsWith('/contact-businesses')) ? -60 : 0 }}
-                    exit={{ y: !(location.startsWith('/ticket') || location.startsWith('/client') || location.startsWith('/contact-businesses')) ? -60 : 0 }}
+                    initial={{ y: !isHeaderSection ? -60 : 0 }}
+                    animate={{ y: !isHeaderSection ? -60 : 0 }}
+                    exit={{ y: !isHeaderSection ? -60 : 0 }}
                     transition={{ duration: 0.2 }}
                     style={{ flex: '1'}}
                 >
@@ -522,7 +535,9 @@ function Content ({userInfo}:{userInfo:userInfo}) {
                             <Route path="/clients" element={<ClientsTable addHeaderSection={addHeaderSection}/>}  />
                             <Route path="/clients/client/:n" element={<Client socket={socket} comesFromTicket={false}  addHeaderSection={addHeaderSection} deleteHeaderSection={deleteHeaderSection}/>}/>
                             <Route path="/contact-businesses" element={<ContactBusinessesTable  addHeaderSection={addHeaderSection}/>}/>
-                            <Route path="/contact-businesses/business/:n" element={<Business socket={socket} comesFromTicket={false}   addHeaderSection={addHeaderSection}/>}/>
+                            <Route path="/contact-businesses/business/:n" element={<Business socket={socket} comesFromTicket={false} addHeaderSection={addHeaderSection}/>}/>
+                            <Route path="/flows" element={<FlowsTable/>}  />
+                            <Route path="/flows/flow/:n" element={<Flow/>}/>
                             <Route path="/stats/*" element={<Stats/>}/>
                             <Route path="/settings/*" element={<Settings />}/>
                             <Route path="*" element={<></>} />
@@ -546,12 +561,11 @@ const NavBarItem = ({ icon, section }:NavBarItemProps) => {
     //NAVIGATE CONSTANT
     const navigate = useNavigate()
     const location = useLocation().pathname
-    const sectionsMap = {tickets: 'Tickets', clients: 'Clientes', stats: 'Estadísticas', 'contact-businesses':'Empresas de Contacto', settings: 'Ajustes'}
+    const sectionsMap = {tickets: 'Tickets', clients: t('Clients'), stats: t('Stats'), flows:t('Flows'), 'contact-businesses':t('Businesses'), settings: t('Settings')}
     
     //HOVER AND SELECT LOGIC
     const [isHovered, setIsHovered] = useState(false)
     const handleClick = () => {
-
         if (section === 'tickets' || section === 'clients' || location.split('/')[1] !== section) {
             navigate(section)
          }
@@ -571,8 +585,6 @@ const NavBarItem = ({ icon, section }:NavBarItemProps) => {
 //LOGOUT BOX 
 const LogoutBox = ({ userInfoApp, auth }:{userInfoApp:userInfo, auth:any}) => {
 
-
-    
     //SHOW AND HIDE LOGOUT ON HOVER LOGIC
     const [showLogout, setShowLogout] = useState(false)
     const timeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -583,7 +595,7 @@ const LogoutBox = ({ userInfoApp, auth }:{userInfoApp:userInfo, auth:any}) => {
     const handleMouseLeave = () => {timeoutRef.current = setTimeout(() => {setShowLogout(false);setShowStatusList(false)}, 100)}
 
     //CHANGE USER STATUS
-    const phoneMap:{[key:string]:[string, IconType, string]} = {'connected':['Conectado', BsFillTelephoneInboundFill, 'green.400'], 'out':['Ausente', BsFillTelephoneMinusFill, 'orange.400'], 'disconnected':['Desconectado', BsFillTelephoneXFill, 'gray.400']}
+    const phoneMap:{[key:string]:[string, IconType, string]} = {'connected':[t('Connected'), BsFillTelephoneInboundFill, 'green.400'], 'out':[t('Out'), BsFillTelephoneMinusFill, 'orange.400'], 'disconnected':[t('Disconnected'), BsFillTelephoneXFill, 'gray.400']}
     const [userStatus, setUserStatus] = useState<string>('connected')
     const [showStatusList, setShowStatusList] = useState<boolean>(false)
      
@@ -605,12 +617,13 @@ const LogoutBox = ({ userInfoApp, auth }:{userInfoApp:userInfo, auth:any}) => {
             <SendFeedBack setShowFeedback={setShowFeedback}/>
         </ConfirmBox>}
 
-
         <Flex  alignItems='center' flexDir='column' position='relative' onMouseEnter={handleMouseEnter}  onMouseLeave={handleMouseLeave} >
+           
             <Box position={'relative'}> 
                 <Avatar name={userInfoApp.name} height={'25px'} width={'25px'} size='xs' />
                 <Box bg={phoneMap[userStatus][2]} position={'absolute'} bottom={'-4px'} right={'-2px'} height={'10px'} width={'10px'} borderRadius={'full'}/>
             </Box>
+
             <AnimatePresence> 
             {showLogout && (
                 <MotionBox initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}    exit={{ opacity: 0, scale: 0.95 }}  transition={{ duration: 0.1,  ease: [0.0, 0.9, 0.9, 1.0],   opacity: {duration: 0.1 }, scale: {duration: 0.1,  ease: [0.0, 0.9, 0.9, 1.0]}}}
@@ -647,19 +660,19 @@ const LogoutBox = ({ userInfoApp, auth }:{userInfoApp:userInfo, auth:any}) => {
                     <Box bg='gray.200' height='1px' width='100%' mb='7px' mt='10px' />
 
                     <Flex p='7px' gap='10px'  justifyContent={'space-between'} alignItems='center' color='gray.600' cursor='pointer' _hover={{ bg: 'brand.hover_gray', color:'black' }} borderRadius='.4rem' onClick={() => {setShowLogout(false);setShowShortcuts(true)}}>
-                         <Text fontSize='.9em' whiteSpace='nowrap'>Atajos</Text>
+                         <Text fontSize='.9em' whiteSpace='nowrap'>{t('Shortcuts')}</Text>
                          <Icon as={PiKeyReturn} />
                     </Flex>
 
                     <Flex p='7px' gap='10px'  justifyContent={'space-between'} alignItems='center' color='gray.600' cursor='pointer' _hover={{ bg: 'brand.hover_gray', color:'black' }} borderRadius='.4rem' onClick={() => {setShowLogout(false);setShowFeedback(true)}}>
-                         <Text fontSize='.9em' whiteSpace='nowrap'>Feedback</Text>
+                         <Text fontSize='.9em' whiteSpace='nowrap'>{t('Feedback')}</Text>
                          <Icon as={VscFeedback} />
                     </Flex>
                            
                     <Box bg='gray.200' height='1px' width='100%' mb='7px' mt='10px' />
 
                     <Flex p='7px' gap='10px'  justifyContent={'space-between'} alignItems='center' color='red.500' cursor='pointer' _hover={{ bg: 'red.50', color:'red.600' }} borderRadius='.4rem' onClick={() => auth.signOut()}>
-                         <Text fontSize='.9em' whiteSpace='nowrap'>Cerrar sesión</Text>
+                         <Text fontSize='.9em' whiteSpace='nowrap'>{t('SignOut')}</Text>
                          <Icon boxSize={'13px'} as={FaArrowRightToBracket} />
                     </Flex>
                 </MotionBox>
@@ -684,14 +697,14 @@ const OrganizationsBox = ({ userInfoApp, isAdmin, setUserInfoApp, auth, session,
         const [invitationCode, setInvitationCode] = useState<string>('')
         return(<> 
             <Box p='15px'> 
-                <Text fontWeight={'medium'} fontSize={'1.2em'}>Introduzca código de invitación</Text>
+                <Text fontWeight={'medium'} fontSize={'1.2em'}>{t('InvitationCode')}</Text>
                 <Box width={'100%'} mt='1vh' mb='2vh' height={'1px'} bg='gray.300'/>
-                <Text mt='2vh' mb='.5vh' fontSize='.9em' fontWeight='medium' whiteSpace='nowrap'>Código de invitación</Text>
+                <Text mt='2vh' mb='.5vh' fontSize='.9em' fontWeight='medium' whiteSpace='nowrap'>{t('GetInvitationCode')}</Text>
                 <EditText value={invitationCode} setValue={setInvitationCode} hideInput={false} size='sm' placeholder='xxxx-xxxx-xxxx-xxxx' />
             </Box>
             <Flex p='15px' mt='2vh' gap='15px' flexDir={'row-reverse'} bg='gray.50' borderTopWidth={'1px'} borderTopColor={'gray.200'}>
-                <Button  size='sm' bg='brand.gradient_blue' color='white'_hover={{bg:'brand.gradient_blue_hover'}} isDisabled={invitationCode === ''} onClick={() => addOrganization({invitationCode, setInvitationCode})}>{waitingNewOrganization?<LoadingIconButton/>:'Unirse'}</Button>
-                <Button  size='sm' onClick={()=>setShowAddOrganization(false)}>Cancelar</Button>
+                <Button  size='sm' bg='brand.gradient_blue' color='white'_hover={{bg:'brand.gradient_blue_hover'}} isDisabled={invitationCode === ''} onClick={() => addOrganization({invitationCode, setInvitationCode})}>{waitingNewOrganization?<LoadingIconButton/>:t('Join')}</Button>
+                <Button  size='sm' onClick={()=>setShowAddOrganization(false)}>{t('Cancel')}</Button>
             </Flex>
         </>)
     }
@@ -734,11 +747,11 @@ const OrganizationsBox = ({ userInfoApp, isAdmin, setUserInfoApp, auth, session,
                         auth.setAuthData({views:response3.data, organizationId:response2.data.organizations[response2.data.organizations.length - 1].id})
                         setWaitingOrganization(false)
                     }
-                    else {setWaitingOrganization(false);showToast({message:'No se ha podido unir a la nueva organización', type:'failed'})}
+                    else {setWaitingOrganization(false);showToast({message:t('Join_Failed'), type:'failed'})}
             }
-            else {setWaitingOrganization(false);showToast({message:'No se ha podido unir a la nueva organización', type:'failed'})}
+            else {setWaitingOrganization(false);showToast({message:t('Join_Failed'), type:'failed'})}
         }
-        else {setWaitingOrganization(false);showToast({message:'No se ha podido unir a la nueva organización', type:'failed'})}
+        else {setWaitingOrganization(false);showToast({message:t('Join_Failed'), type:'failed'})}
     }
 
     //CHANGE ORGANIZATION LOGIC
@@ -772,9 +785,9 @@ const OrganizationsBox = ({ userInfoApp, isAdmin, setUserInfoApp, auth, session,
                 <MotionBox initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}    exit={{ opacity: 0, scale: 0.9 }}  transition={{ duration: 0.1,  ease: [0.0, 0.9, 0.9, 1.0],   opacity: {duration: 0.1 }, scale: {duration: 0.1,  ease: [0.0, 0.9, 0.9, 1.0]}}}
                 style={{ transformOrigin: 'top' }} position='absolute' bg='white' p='15px' right='2vw' top='50px' zIndex={1000} boxShadow='0 0 10px 1px rgba(0, 0, 0, 0.15)' borderColor='gray.300' borderWidth='1px' borderRadius='.5rem' >
                     <Box>
-                    <Text fontSize='.9em' fontWeight='medium' whiteSpace='nowrap' mb='1vh'>Organizaciones</Text>
+                    <Text fontSize='.9em' fontWeight='medium' whiteSpace='nowrap' mb='1vh'>{t('Organizations')}</Text>
                     {userInfoApp.organizations.length === 0 ? (
-                        <Text fontSize='.8em' fontWeight='normal'>No hay organizaciones disponibles</Text>
+                        <Text fontSize='.8em' fontWeight='normal'>{t('NoOrganizations')}</Text>
                     ) : (
                         userInfoApp.organizations.map((org) => (
                         <Flex key={`organization-${org.id}`} cursor={'pointer'} bg={auth.authData.organizationId === org.id ? 'blue.50':'transparent'} alignItems='center' p='7px' fontSize='.8em' _hover={{ bg:auth.authData.organizationId === org.id ?'blue.50': 'brand.hover_gray' }} borderRadius='.7rem' onClick={() => changeOrganization(org)}>
@@ -786,11 +799,11 @@ const OrganizationsBox = ({ userInfoApp, isAdmin, setUserInfoApp, auth, session,
                     <Box bg='gray.300' height='1px' width='100%' mb='1vh' mt='2vh' />
 
                     <Flex justifyContent={'space-between'}gap='10px' alignItems={'center'} p='7px'  fontSize='.9em' borderRadius={'.5rem'} _hover={{bg:'brand.hover_gray', color:'black'}} color='gray.600' cursor='pointer' onClick={() => {setShowOrganizations(false);setShowAddOrganization(true)}}>
-                        <Text>Añadir organización</Text>
+                        <Text>{t('AddOrganization')}</Text>
                         <Icon as={FiPlus}/>
                     </Flex>
                     {isAdmin && <Flex justifyContent={'space-between'}gap='10px' alignItems={'center'} p='7px'  fontSize='.9em' borderRadius={'.5rem'} _hover={{bg:'brand.hover_gray', color:'black'}} color='gray.600' cursor='pointer' onClick={() => {setShowOrganizations(false);navigate('/settings/organization/data')}}>
-                        <Text>Ver organización</Text>
+                        <Text>{t('SeeOrganization')}</Text>
                         <Icon as={BiSolidBuildings}/>
                     </Flex>}
                 </MotionBox>
@@ -801,12 +814,12 @@ const OrganizationsBox = ({ userInfoApp, isAdmin, setUserInfoApp, auth, session,
       
         <Flex width='100vw' bg='gray.100' height='100vh' alignItems={'center'} justifyContent={'center'}>
             <Box maxW={'650px'} rounded={'lg'} bg='white' boxShadow={'lg'} p={8} >
-                <Text fontWeight='medium' fontSize={'1.2em'}>Este usuario no pertenece a ninguna organización</Text>
-                <Text fontWeight='medium' fontSize={'1em'} mt='2vh' mb='.5vh'>Introduzca un código de invitación</Text>
+                <Text fontWeight='medium' fontSize={'1.2em'}>{t('NoOrganizationUser')}</Text>
+                <Text fontWeight='medium' fontSize={'1em'} mt='2vh' mb='.5vh'>{t('GetInvitationCode')}</Text>
                 <EditText value={firstInvitationCode} setValue={setFirstInvitationCode} placeholder='xxxxxxxx-xxxx-xxxx-xxxxxxxxxxxx' hideInput={false}/>
-                <Button color='white' bg={'brand.gradient_blue'} _hover={{bg:'brand.gradient_blue_hover'}} size='sm' leftIcon={waitingNewOrganization?<></>:<FaPlus />} mt='2vh' isDisabled={firstInvitationCode === ''} width='100%' onClick={() => addOrganization({invitationCode:firstInvitationCode, setInvitationCode:setFirstInvitationCode})}>{waitingNewOrganization?<LoadingIconButton/>:'Unirse con código'}</Button>
+                <Button color='white' bg={'brand.gradient_blue'} _hover={{bg:'brand.gradient_blue_hover'}} size='sm' leftIcon={waitingNewOrganization?<></>:<FaPlus />} mt='2vh' isDisabled={firstInvitationCode === ''} width='100%' onClick={() => addOrganization({invitationCode:firstInvitationCode, setInvitationCode:setFirstInvitationCode})}>{waitingNewOrganization?<LoadingIconButton/>:t('Join')}</Button>
             </Box>
-            <Button onClick={() => auth.signOut()} position='fixed' bottom='2vh' left='2vh' size='sm'bg='brand.gradient_blue' color='white' leftIcon={<TbArrowBack/>} _hover={{bg:'brand.gradient_blue_hover'}}>Volver al registro</Button>
+            <Button onClick={() => auth.signOut()} position='fixed' bottom='2vh' left='2vh' size='sm'bg='brand.gradient_blue' color='white' leftIcon={<TbArrowBack/>} _hover={{bg:'brand.gradient_blue_hover'}}>{t('Return')}</Button>
         </Flex>}
         </>
     )

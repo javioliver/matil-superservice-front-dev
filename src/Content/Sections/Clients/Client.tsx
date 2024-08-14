@@ -2,11 +2,12 @@
     MAIN CLIENT FUNCTION (clients/client/{client_id} or tickets/ticket/{ticket_id}/client)
 */
 
-import { useState, useRef, useEffect, ChangeEvent, KeyboardEvent, Dispatch, SetStateAction, Fragment, lazy, Suspense, CSSProperties } from "react"
+import { useState, useRef, useEffect, ChangeEvent, KeyboardEvent, Dispatch, SetStateAction, Fragment, lazy, Suspense, useMemo } from "react"
 import { useAuth } from "../../../AuthContext"
 import { useSession } from "../../../SessionContext"
 import { useLocation, useNavigate } from "react-router-dom"
 import DOMPurify from 'dompurify'
+import { useTranslation } from 'react-i18next'
 //FRONT
 import { Flex, Box, Text, Icon, Textarea, Avatar, Button, Skeleton, IconButton} from '@chakra-ui/react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -59,6 +60,10 @@ const MotionBox = motion(Box)
 //MAIN FUNCTION
 function Client ({comesFromTicket,  socket, addHeaderSection, deleteHeaderSection, clientData, setClientData, clientTickets, setClientTickets, businessData, setBusinessData, businessClients, setBusinessClients}: ClientProps) {
     
+
+    //TRANSLATION
+    const { t } = useTranslation('flows')
+
     //CONSTANTS
     const auth = useAuth()
     const session = useSession()
@@ -410,6 +415,26 @@ function Client ({comesFromTicket,  socket, addHeaderSection, deleteHeaderSectio
         </Flex>
         </>)
     }
+
+    const memoizedAddBusiness = useMemo(() => (
+        <ConfirmmBox setShowBox={setShowAddBusiness}> 
+            <CreateBusiness setShowBox={setShowAddBusiness} actionTrigger={(data:any) => handleCreateContactBusiness(data)}/>
+        </ConfirmmBox>
+    ), [showAddBusiness])
+
+    const memoizedMergeBox = useMemo(() => (
+        <ConfirmmBox setShowBox={setShowMerge}> 
+            <MergeBox clientData={clientDataEdit} setShowMerge={setShowMerge} deleteHeaderSection={deleteHeaderSection}/>
+        </ConfirmmBox>
+    ), [showMerge])
+
+
+    const memoizedBlockBox = useMemo(() => (
+        <ConfirmmBox setShowBox={setShowBlock}> 
+            <BlockComponent/>
+        </ConfirmmBox>
+    ), [showBlock])
+ 
     return(
      
     <Suspense fallback={<></>} >    
@@ -431,10 +456,7 @@ function Client ({comesFromTicket,  socket, addHeaderSection, deleteHeaderSectio
                 </Flex>
         </Flex>}
 
-        {showAddBusiness && 
-        <ConfirmmBox setShowBox={setShowAddBusiness}> 
-            <CreateBusiness setShowBox={setShowAddBusiness} actionTrigger={(data:any) => handleCreateContactBusiness(data)}/>
-        </ConfirmmBox>}
+        {showAddBusiness && memoizedAddBusiness}
 
 
         {clientSection === 'client'?
@@ -467,8 +489,8 @@ function Client ({comesFromTicket,  socket, addHeaderSection, deleteHeaderSectio
                                 <Fragment key={`select-channel-${index}`}> 
                                     {(clientDataEdit?.[con as ContactChannel] === null || clientDataEdit?.[con as ContactChannel] === '')&&
                                         <Flex color='gray.600' fontSize={'.9em'} onClick={() => addNewChannel(con as ContactChannel)} key={`channels-${index}`}  px='15px' py='10px' cursor={'pointer'} gap='10px' alignItems={'center'} _hover={{bg:'gray.100'}}>
-                                            <Icon as={logosMap[contactDicRegex[con as ContactChannel][3]][1]}/>
-                                            <Text>{logosMap[contactDicRegex[con as ContactChannel][3]][0]}</Text>
+                                            <Icon as={logosMap[contactDicRegex[con as ContactChannel][3]][0]}/>
+                                            <Text>{t(contactDicRegex[con as ContactChannel][3])}</Text>
                                         </Flex>
                                     }
                                 </Fragment>))}
@@ -580,20 +602,12 @@ function Client ({comesFromTicket,  socket, addHeaderSection, deleteHeaderSectio
             </Box>
             </Flex>
 
-            {showMerge &&
-            <ConfirmmBox setShowBox={setShowMerge}> 
-                <MergeBox clientData={clientDataEdit} setShowMerge={setShowMerge} deleteHeaderSection={deleteHeaderSection}/>
-            </ConfirmmBox>}
-
-            {showBlock &&
-            <ConfirmmBox setShowBox={setShowBlock}> 
-                <BlockComponent/>
-            </ConfirmmBox>}
+            {showMerge && memoizedMergeBox}
+            {showBlock && memoizedBlockBox}
         </>:
         <> 
-        {!comesFromTicket &&
-        <Business  socket={socket} comesFromTicket={true} businessData={businessData ? businessData:businessDataEdit} setBusinessData={setBusinessData? setBusinessData:setBusinessDataEdit} businessClients={businessClients?businessClients:businessClientsEdit} setBusinessClients={setBusinessClients?setBusinessClients:setBusinessClientsEdit}  addHeaderSection={addHeaderSection}/>
-        }</>}
+            {!comesFromTicket && <Business  socket={socket} comesFromTicket={true} businessData={businessData ? businessData:businessDataEdit} setBusinessData={setBusinessData? setBusinessData:setBusinessDataEdit} businessClients={businessClients?businessClients:businessClientsEdit} setBusinessClients={setBusinessClients?setBusinessClients:setBusinessClientsEdit}  addHeaderSection={addHeaderSection}/>}
+        </>}
         
     </Suspense>)
     }
@@ -650,6 +664,7 @@ const MergeBox = ({clientData, setShowMerge, deleteHeaderSection}:MergeBoxProps)
         }
     }
 
+
     return(<>
             <Box p='15px'> 
                 <Text fontWeight={'medium'} fontSize={'1.2em'}>Fusionar con otro usuario</Text>
@@ -701,7 +716,7 @@ const MergeBox = ({clientData, setShowMerge, deleteHeaderSection}:MergeBoxProps)
                     :<Flex alignItems={'center'} p='10px' gap='15px' bg='gray.50' borderColor={'gray.300'} borderWidth='1px' borderRadius={'.5rem'}>
                         <Avatar size='sm'/>
                         <Box>
-                            <Text fontWeight={'medium'}>{clientData?.name}</Text>
+                            <Text fontWeight={'medium'}>{selectedClient?.name}</Text>
                         </Box>
                     </Flex>}
                 </Flex>

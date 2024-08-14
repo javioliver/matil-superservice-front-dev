@@ -11,7 +11,8 @@ import { FaInstagram } from "react-icons/fa"
     const navigate = useNavigate()
     const handleAuth = async () => {
       try {
-        window.open('https://www.facebook.com/v20.0/dialog/oauth?client_id=1955281408238790&display=page&extras={"setup":{"channel":"IG_API_ONBOARDING"}}&redirect_uri=https://superservice.matil.es/settings/channels/instagram/success_auth&response_type=token&scope=pages_messaging,pages_manage_metadata,instagram_basic,instagram_manage_messages,instagram_content_publish,business_management,instagram_manage_comments,instagram_manage_insights,pages_show_list,pages_read_engagement', '_blank')
+        //window.open('https://www.facebook.com/v20.0/dialog/oauth?client_id=1955281408238790&display=page&extras={"setup":{"channel":"IG_API_ONBOARDING"}}&redirect_uri=https://superservice.matil.es/settings/channels/instagram/success_auth&response_type=token&scope=pages_messaging,pages_manage_metadata,instagram_basic,instagram_manage_messages,instagram_content_publish,business_management,instagram_manage_comments,instagram_manage_insights,pages_show_list,pages_read_engagement', '_blank')
+        window.open('https://www.facebook.com/v20.0/dialog/oauth?client_id=1955281408238790&display=page&redirect_uri=https://superservice.matil.es/settings/channels/instagram/success_auth&response_type=token&scope=pages_messaging,pages_manage_metadata,instagram_basic,instagram_manage_messages,instagram_content_publish,business_management,instagram_manage_comments,instagram_manage_insights,pages_show_list,pages_read_engagement', '_blank')
         localStorage.setItem('currentSettingsSection', 'channels/instagram/success_auth')
         navigate('/settings/channels/instagram/success_auth')
         setShowBox(false)

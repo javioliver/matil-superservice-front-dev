@@ -6,6 +6,7 @@
 import  { Suspense, useEffect, lazy, useRef, Fragment } from "react"
 import { Routes, Route,  useNavigate, useLocation } from "react-router-dom" 
 import { useAuth } from "../../../AuthContext"
+import { useTranslation } from 'react-i18next'
 //FRONT
 import { Box, Flex, Text, Icon } from '@chakra-ui/react'
 import '../../Components/styles.css'
@@ -15,23 +16,38 @@ import { IoPeopleSharp } from "react-icons/io5"
 import { BiSolidBuildings } from "react-icons/bi"
 import { FaDoorOpen, FaPlug } from "react-icons/fa"
 import { HiChatAlt2 } from "react-icons/hi"
+import { FaDiagramProject } from "react-icons/fa6"
+
 //TYPING
 import { IconKey, SubSectionProps, SectionsListProps } from "../../Constants/typing"
 
-//SECTIONS
+//MAIN
 const Main = lazy (() => import('./Main')) 
+//ORGANIZATION
+const Data = lazy(() => import('./Organization/Data'))
+//const Payments = lazy(() => import('./Organization/Payments'))
+const TicketsData = lazy(() => import('./Organization/TicketsData'))
+const AdminUsers = lazy(() => import('./Organization/AdminUsers'))
+//const Groups = lazy(() => import('./Organization/Groups'))
+//PERSONAL
+const User = lazy(() => import('./User/User'))
+const ViewsList = lazy(() => import('./User/Views'))
+const EditView = lazy(() => import('./User/EditView'))
+const Shortcuts = lazy(() => import('./User/Shortcuts'))
+//RULES
+//const TicketsFields = lazy(() => import('./Organization/TicketsFields'))
+//const ClientsFields = lazy(() => import('./Organization/ClientsFields'))
+//const BusinessesFields = lazy(() => import('./Organization/TicketsFields'))
+//const Triggers = lazy(() => import('./Organization/Triggers'))
+//const Automatizations = lazy(() => import('./Organization/Automatizations'))
+//CHANNELS
 const Chatbot = lazy(() => import('./Channels/Chatbot'))
 const Google = lazy(() => import('./Channels/Google'))
 const Mail = lazy(() => import('./Channels/Mail'))
 const Instagram = lazy(() => import('./Channels/Instagram'))
 const Whatsapp = lazy(() => import('./Channels/Whatsapp'))
 const Phone = lazy(() => import('./Channels/Phone'))
-const Data = lazy(() => import('./Organization/Data'))
-const AdminUsers = lazy(() => import('./Organization/AdminUsers'))
-const TicketsData = lazy(() => import('./Organization/TicketsData'))
-const ViewsList = lazy(() => import('./People/Views'))
-const EditView = lazy(() => import('./People/EditView'))
-const Shortcuts = lazy(() => import('./People/Shortcuts'))
+//INTEGRATIOSN
 const Shopify = lazy(() => import('./Integrations/Shopify'))
 
 
@@ -42,14 +58,15 @@ interface ExpandableSectionProps {
   
 const Section = ({ section, subSections }: ExpandableSectionProps) => {
     
+    //TRANSLATION
+    const { t } = useTranslation('settings')
+
     //CONSTANTS
     const navigate = useNavigate()
     const selectedSection = useLocation().pathname.split('/')[2]
     const selectedSubSection = useLocation().pathname.split('/')[3]
-    const sectionsList: SectionsListProps = {'organization':'Organización','people':'Usuarios','channels': 'Canales', 'integrations':'Integraciones','main':'Inicio'}
-    const iconsMap: Record<IconKey, IconType> = {organization: BiSolidBuildings, people: IoPeopleSharp, channels: HiChatAlt2, integrations:FaPlug, main:FaDoorOpen}
-
- 
+    const sectionsList: SectionsListProps = {'organization':t('Organization'),'user':t('Personal'), 'rules':t('Rules'), 'channels': t('Channels'), 'integrations':t('Integrations'),'main':t('Main')}
+    const iconsMap: Record<IconKey, IconType> = {organization: BiSolidBuildings, user: IoPeopleSharp, rules:FaDiagramProject, channels: HiChatAlt2, integrations:FaPlug, main:FaDoorOpen}
 
     //NAVIGATE
     const navigateToSection = (section:string) => {
@@ -78,19 +95,23 @@ const Section = ({ section, subSections }: ExpandableSectionProps) => {
 
 function Settings () {
 
+    //TRANSLATION
+    const { t } = useTranslation('settings')
+
     //SECTIONS
     const auth = useAuth()
     const isAdmin = auth.authData.users?.[auth.authData?.userId || '']?.is_admin
 
     const subSections: SubSectionProps[] = [
-        [['Datos', 'data'], ['Personal','admin-users'], ['Tickets', 'tickets']],
-        [['Vistas', 'edit-views'], ['Atajos', 'shortcuts']],
-        [['Chat Web','web'], ['Whatsapp','whatsapp'], ['Teléfono','phone'], ['Instagram','instagram'], ['Google Business','google-business'], ['Correo electrónico','mail']],
+        [[t('Data'), 'data'], [t('Payments'), 'payments'], [t('Tickets'), 'tickets'], [t('Personal'),'admin-users'], [t('Groups'),'groups']],
+        [[t('User'), 'user'],[t('Views'), 'edit-views'], [t('Shortcuts'), 'shortcuts']],
+        [[t('TicketsFields'), 'tickets-fields'], [t('ClientsFields'), 'clients-fields'],[t('BusinessesFields'), 'businesses-fields'],[t('Triggers'), 'triggers'], [t('Automatizations'), 'automatizations']],
+        [[t('Web'),'web'], ['Whatsapp','whatsapp'], [t('Phone'),'phone'], ['Instagram','instagram'], ['Google Business','google-business'], [t('Mail'),'mail']],
         [['Shopify','shopify']]
 
     ] 
     
-    const sectionsList: (IconKey | '')[] = isAdmin ? ['organization', 'people', 'channels', 'integrations'] : ['', 'people', '']
+    const sectionsList: (IconKey | '')[] = isAdmin ? ['organization', 'user', 'rules', 'channels', 'integrations'] : ['', 'user', '']
 
     //CONSTANTS
     const navigate = useNavigate()
@@ -130,9 +151,10 @@ function Settings () {
                         <Route path="/organization/admin-users" element={<AdminUsers />} />
                         <Route path="/organization/tickets" element={<TicketsData />} />
 
-                        <Route path="/people/edit-views" element={<ViewsList />} />
-                        <Route path="/people/edit-views/edit/*" element={<EditView scrollRef={scrollRef}/>} />
-                        <Route path="/people/shortcuts" element={<Shortcuts/>} />
+                        <Route path="/user/user" element={<User />} />
+                        <Route path="/user/edit-views" element={<ViewsList />} />
+                        <Route path="/user/edit-views/edit/*" element={<EditView scrollRef={scrollRef}/>} />
+                        <Route path="/user/shortcuts" element={<Shortcuts/>} />
 
                         <Route path="/channels/web" element={<Chatbot />} />
                         <Route path="/channels/whatsapp" element={<Whatsapp />} />

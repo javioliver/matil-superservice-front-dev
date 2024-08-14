@@ -1,4 +1,4 @@
-
+//ICONS
 import { IconType } from "react-icons"
 import { IoMdMail, IoLogoWhatsapp } from "react-icons/io"
 import { IoChatboxEllipses, IoLogoGoogle } from "react-icons/io5"
@@ -69,24 +69,23 @@ export type TicketColumn =
 
   
 
-type ColumnsTicketsMap = {[key in TicketColumn]: [string, number]}
+type ColumnsTicketsMap = {[key in TicketColumn]: number}
   
 export const columnsTicketsMap: ColumnsTicketsMap = {
-    id: ['Id', 50],
-    local_id: ['Id', 50],
-    status: ['Estado', 100],
-    channel_type: ['Canal', 150],
-    subject: ['Tema', 200],
-    user_id: ['Agente asignado', 200],
-    created_at: ['Creado', 150],
-    updated_at: ['Última interacción', 150],
-    solved_at: ['Resuelto', 150],
-    closed_at: ['Cerrado', 150],
-    title: ['Descripción', 300],
-    urgency_rating: ['Prioridad', 130],
-    deletion_date: ['Fecha de eliminación', 180],
-    unseen_changes: ['Mensajes no leídos', 250],
- 
+    id: 50,
+    local_id: 50 ,
+    status:  100,
+    channel_type: 150,
+    subject:  200,
+    user_id: 200,
+    created_at: 150,
+    updated_at: 150,
+    solved_at: 150,
+    closed_at: 150,
+    title: 300,
+    urgency_rating: 130,
+    deletion_date: 180,
+    unseen_changes: 250,
   }
 
 export interface TicketsTableProps {
@@ -146,19 +145,19 @@ export type ClientColumn =
 
 
 interface ColumnsMap {
-    [key:string]: [string, number];
+    [key:string]: number;
 }
 
 export const columnsClientsMap: ColumnsMap = {
-    name: ["Nombre", 200],
-    contact: ["Contacto", 150],
-    labels: ["Etiquetas", 350],
-    last_interaction_at: ["Última interacción", 150],
-    created_at: ["Creado", 150],
-    rating: ["Rating", 60],
-    language: ["Idioma", 150],
-    notes: ["Notas", 350],
-    is_blocked: ["Estado", 150]
+    name: 200,
+    contact: 150,
+    labels: 350,
+    last_interaction_at: 150,
+    created_at: 150,
+    rating: 60,
+    language: 150,
+    notes: 350,
+    is_blocked: 150
  }
 
  export const languagesFlags: {[key: string]: [string, string]} = {
@@ -214,12 +213,11 @@ export interface Clients {
 
 //CONTACT BUSINESSSES TABLE
 export const columnsBusinessesMap: ColumnsMap = {
-    name: ["Nombre", 200],
-    labels: ["Etiquetas", 350],
-    created_at: ["Creado", 150],
-    last_interaction_at: ["Última interacción", 150],
-    notes: ["Notas", 350],
-
+    name: 200,
+    labels:  350,
+    created_at:  150,
+    last_interaction_at:  150,
+    notes: 350,
  }
 
 export interface ContactBusinessesTable {
@@ -244,6 +242,45 @@ export interface ContactBusiness {
     'last_interaction_at': string
 }
 
+//FLOWS
+export type FlowsColumn = 
+  | 'id'
+  | 'name'
+  | 'description'
+  | 'status'
+  | 'channel'
+  | 'created_at'
+  | 'updated_at'
+export interface FlowsData {
+    id:number
+    name: string
+    description:string
+    status: 'active' | 'inactive' | 'draft'
+    channel: Channels
+    created_at:string
+    updated_at:string
+  }
+export interface Flows {
+    'total_flows':number
+    'page_index':number
+    'page_data':FlowsData[]
+}
+export const columnsFlowsMap: ColumnsMap = {
+    name: 200,
+    description:  350,
+    status: 150,
+    channel: 150,
+    created_at:  150,
+    updated_at: 150
+ }
+export type nodeTypesDefinition = 'extractor' | 'brancher' | 'sender' | 'function' | 'terminator' | 'transfer' | 'reset' | 'flow_swap' | 'motherstructure_updates'
+export type actionTypesDefinition = 'message' | 'condition' | 'extract'
+export type Branch = {
+    name:string, 
+    conditions:{variable_index:number, op:string, value:any}[],
+    next_node_index:number
+  }
+
 //MESSAGES
 export type MessagesProps = {
     id:number
@@ -259,25 +296,25 @@ export type MessagesData = {
 }
 
 //STATES MAP
-export const statesMap = 
+export const statesMap:{[key in 'new' | 'open' |'solved' | 'pending' | 'closed']: [string, string]} = 
 {
-    'new':['Nuevo', 'gray.400', 'gray.500'],
-    'open':['Abierto', 'red.500', 'red.600'],
-    'pending':['Pendiente','blue.500', 'blue.600',],
-    'solved':['Resuelto','green.400', 'green.500'],
-    'closed':['Cerrado','gray.700', 'gray.800']
+    'new':['gray.400', 'gray.500'],
+    'open':['red.500', 'red.600'],
+    'pending':['blue.500', 'blue.600',],
+    'solved':['green.400', 'green.500'],
+    'closed':['gray.700', 'gray.800']
 }
 
 //FILTERS AND MAPPING
 export type Channels = 'email' | 'whatsapp' | 'instagram' | 'webchat' | 'google_business' | 'phone'
-export const logosMap:{[key in Channels]: [string, IconType, string]} = 
+export const logosMap:{[key in Channels]: [IconType, string]} = 
     {
-        'email':['Mail', IoMdMail, 'red.600'],
-        'webchat':['Web',IoChatboxEllipses, 'cyan.400'], 
-        'whatsapp':['Whatsapp',IoLogoWhatsapp, 'green'], 
-        'instagram': ['Instagram', AiFillInstagram, 'pink.700'], 
-        'google_business':['Google Business', IoLogoGoogle, 'blue.400'],
-        'phone':['Llamada telefónica', FaPhone, 'blue.400']
+        'email':[ IoMdMail, 'red.600'],
+        'whatsapp':[IoLogoWhatsapp, 'green'], 
+        'webchat':[IoChatboxEllipses, 'cyan.400'], 
+        'google_business':[ IoLogoGoogle, 'blue.400'],
+        'instagram': [AiFillInstagram, 'pink.700'], 
+        'phone':[ FaPhone, 'blue.400']
 
     }
 export type ContactChannel = 'email_address' | 'phone_number' |  'instagram_username' | 'webchat_uuid' |  'google_business_id'
@@ -290,7 +327,7 @@ export const contactDicRegex:{[key in ContactChannel]:[string, RegExp, number, C
   }
 
 //SETTINGS
-export type IconKey = 'organization' | 'people' | 'channels' | 'integrations' | 'main'
+export type IconKey = 'organization' | 'user' | 'rules' | 'channels' | 'integrations' | 'main'
 export type SubSectionProps = string[][]
 export type SectionsListProps = {[key in IconKey]: string}
 
@@ -309,3 +346,6 @@ export interface configProps {
     out_of_business_agent_transfer_message: string
     ask_for_requirement_confirmation:boolean
 }
+
+//CONDITIONS TYPES
+export type DataTypes = 'bool' | 'int' | 'float' | 'str' | 'timestamp' | 'list' | 'json'

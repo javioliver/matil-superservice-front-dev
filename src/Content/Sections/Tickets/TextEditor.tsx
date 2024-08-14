@@ -7,6 +7,7 @@ import { useState, useRef, useCallback, useMemo, Fragment, useEffect } from 'rea
 import { useAuth } from '../../../AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { useSession } from '../../../SessionContext'
+import { useTranslation } from 'react-i18next'
 //FRONT
 import { Box, Flex, Button, IconButton, Icon, Text, Avatar, Image, Portal } from '@chakra-ui/react'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -30,7 +31,7 @@ import { PiTextTBold } from "react-icons/pi"
 import { FaRegEdit } from "react-icons/fa"
 import { RxCross2 } from "react-icons/rx"
 //TYPING
-import { DeleteHeaderSectionType, TicketsTableProps, TicketData } from '../../Constants/typing'
+import { DeleteHeaderSectionType, TicketsTableProps, statesMap,  TicketData } from '../../Constants/typing'
    
 //TYPING
 interface TextEditorProps {
@@ -47,20 +48,13 @@ const MotionBox = motion(Box)
 //MAIN FUNCTION
 function TextEditor({clientName, ticketData, updateData, deleteHeaderSection, takeConversationControl }:TextEditorProps) {
 
+    //TRANSLATION
+    const { t } = useTranslation('tickets')
+
     //AUTH CONSTANT
     const auth = useAuth()
     const session = useSession()
     const navigate = useNavigate()
-    
-    //SEND LIKE LOGIC
-    const statesMap = 
-    {
-        'new':['Nuevo', 'gray.400', 'gray.500'],
-        'open':['Abierto','red.500', 'red.600'],
-        'pending':['Pendiente','blue.500', 'blue.600',],
-        'solved':['Resuelto','green.400', 'green.500'],
-        'closed':['Cerrado','gray.700', 'gray.800']
-    }
 
     //SEND PANEL REF, FOR HIDDING THE BOX ON SCROLL
     const sendPanelRef = useRef<HTMLDivElement>(null)
@@ -278,7 +272,7 @@ function TextEditor({clientName, ticketData, updateData, deleteHeaderSection, ta
         }
 
         setTextValue('')
-        const response = await fetchData({endpoint:`conversations/${ticketData?.conversation_id}`, setWaiting:setWaitingSend, requestForm:{is_internal_note:isInternalNote,...messageContent}, method:'post', auth, toastMessages:{'failed':'Hubo un error al subir el mensaje', 'works':'Se ha subido el mensaje correctamente'}})
+        const response = await fetchData({endpoint:`conversations/${ticketData?.conversation_id}`, setWaiting:setWaitingSend, requestForm:{is_internal_note:isInternalNote,...messageContent}, method:'post', auth, toastMessages:{'failed':t('MessageSentFailed'), 'works':t('MessageSent')}})
         
         if (response?.status === 200) {
             if (sendAction === 'close') {
@@ -386,7 +380,6 @@ function TextEditor({clientName, ticketData, updateData, deleteHeaderSection, ta
         updateData('ticket', {...ticketData as TicketData, 'status':state})
 
         if (totalSize < 10 * 1024 * 1024 && (textValueRef.current !== '' || htmlValueRef.current !== '')) {
-            console.log(textValue)
             if (ticketData?.channel_type !== 'email') sendMessage('plain', textValueRef.current)
             else sendMessage('email', htmlValueRef.current)
         }
@@ -490,38 +483,36 @@ function TextEditor({clientName, ticketData, updateData, deleteHeaderSection, ta
             {(ticketData?.user_id === -1 || ticketData?.status === 'closed' ) ?
                 <Flex gap='20px' zIndex={10} justifyContent={'center'} alignItems={'center'} py='20px' bg='gray.50' borderTopColor={'gray.200'} borderTopWidth={'1px'}>
                     <Text >{ticketData?.status === 'closed' ?'El ticket está cerrado, no se pueden enviar más mensajes'  :'El ticket está siendo gestionado por Matilda'}</Text>
-                    {(ticketData?.user_id === -1 && ticketData?.status !== 'closed' ) && <Button fontSize={'1em'} borderRadius={'2em'} onClick={takeConversationControl} bg={'brand.gradient_blue'} _hover={{bg:'brand.gradient_blue_hover'}} color='white' size='sm'>Tomar control</Button>}
+                    {(ticketData?.user_id === -1 && ticketData?.status !== 'closed' ) && <Button fontSize={'1em'} borderRadius={'2em'} onClick={takeConversationControl} bg={'brand.gradient_blue'} _hover={{bg:'brand.gradient_blue_hover'}} color='white' size='sm'>{t('TakeControl')}</Button>}
                 </Flex>:
             <Box position={'relative'} bg={isInternalNote?'yellow.100':''} minH={'150px'} maxH={'600px'} height={`${height}px`} borderTopColor={'gray.200'} borderTopWidth={'1px'}> 
                 <Box height={'10px'}  onMouseDown={handleMouseDown} cursor='ns-resize'/>
                     <Flex pt='5px' gap='10px' pb='15px' px='15px' alignItems={'center'} justifyContent={'space-between'}> 
                         <Flex alignItems={'center'} gap='9px' maxW={'100%'}>
-    
-          
                             <Portal > 
                                 {showSelector &&
                                     <MotionBox ref={boxRef} initial={{ opacity: 0, marginBottom: -10}} animate={{ opacity: 1, marginBottom: 0 }}  exit={{ opacity: 0, marginBottom: -10}} transition={{ duration: 0.2,  ease: [0.0, 0.9, 0.9, 1.0]}} 
                                     fontSize={'.8em'} overflow={'hidden'} bottom={window.innerHeight -  (noteRef.current?.getBoundingClientRect().top || 0) + 10}  left={noteRef.current?.getBoundingClientRect().left} boxShadow={'0px 0px 10px rgba(0, 0, 0, 0.2)'} bg='white' zIndex={100000}   position={'absolute'} borderRadius={'.3rem'} borderWidth={'1px'} borderColor={'gray.300'}>
                                         <Flex p='10px' alignItems={'center'} gap='7px' cursor={'pointer'} _hover={{bg:'brand.hover_gray'}} onClick={() => {setIsInternalNote(true);setShowSelector(false)}}>
                                             <Icon as={FaRegEdit}/>
-                                            <Text whiteSpace={'nowrap'}>Nota interna</Text>
+                                            <Text whiteSpace={'nowrap'}>{t('InternalNote')}</Text>
                                         </Flex>
                                         <Flex p='10px' alignItems={'center'} gap='7px' cursor={'pointer'} _hover={{bg:'brand.hover_gray'}} onClick={() => {setIsInternalNote(false);setShowSelector(false)}}>
                                             <Icon as={IoArrowUndoSharp}/>
-                                            <Text whiteSpace={'nowrap'}>Respuesta pública</Text>
+                                            <Text whiteSpace={'nowrap'}>{t('Public')}</Text>
                                         </Flex>
                                     </MotionBox>
                                 }
                             </Portal > 
                             <Flex ref={noteRef} cursor={'pointer'} gap='5px' alignItems={'center'} onClick={() => setShowSelector(!showSelector)}> 
                                 <Icon as={isInternalNote?FaRegEdit:IoArrowUndoSharp} color='gray.400' boxSize={'15px'}/>
-                                <Text color='gray.600' fontSize={'.8em'} whiteSpace={'nowrap'}>{isInternalNote?'Nota interna':'Respuesta pública'}</Text>
+                                <Text color='gray.600' fontSize={'.8em'} whiteSpace={'nowrap'}>{isInternalNote?t('InternalNote'):t('Public')}</Text>
                                 <Icon  color='gray.600'className={ showSelector? "rotate-icon-up" : "rotate-icon-down"} as={IoIosArrowDown} boxSize={'13px'}/>
                             </Flex>
                                
                            
                             <Text color='gray.500' fontSize={'.8em'}>|</Text>
-                            <Text color='gray.500' fontSize={'.8em'}>Para</Text>
+                            <Text color='gray.500' fontSize={'.8em'}>{t('For')}</Text>
                             <Flex flex='1' minW={0}   alignItems={'center'} gap='4px' borderColor={'gray.400'} bg='gray.100' px='5px' py='1px' borderWidth={'1px'} borderRadius={'2em'}>
                                 <Avatar height='10px' width={'10px'}/>
                                 <Text fontSize={'.7em'} color='gray.600' whiteSpace={'nowrap'} textOverflow={'ellipsis'} overflow={'hidden'}>{clientName}</Text>
@@ -559,19 +550,19 @@ function TextEditor({clientName, ticketData, updateData, deleteHeaderSection, ta
                                     <MotionBox  bottom={window.innerHeight -  (actionNoteRef.current?.getBoundingClientRect().top || 0) + 10}  right={window.innerWidth - (actionNoteRef.current?.getBoundingClientRect().right || 0)}  ref={actionBoxRef} initial={{ opacity: 0, marginBottom: -10}} animate={{ opacity: 1, marginBottom: 0 }}  exit={{ opacity: 0, marginBottom: -10}} transition={{ duration: 0.2,  ease: [0.0, 0.9, 0.9, 1.0]}} 
                                         fontSize={'.8em'} overflow={'hidden'} boxShadow={'0px 0px 10px rgba(0, 0, 0, 0.2)'} bg='white' zIndex={1000}   position={'absolute'} borderRadius={'.3rem'} borderWidth={'1px'} borderColor={'gray.300'}>
                                         <Flex p='7px' alignItems={'center'} gap='7px' cursor={'pointer'} _hover={{bg:'brand.hover_gray'}} onClick={() => {setShowChangeAction(false);setSendAction('close');localStorage.setItem('sendAction','close')}}>
-                                            <Text whiteSpace={'nowrap'}>Cerrar pestaña</Text>
+                                            <Text whiteSpace={'nowrap'}>{t('CloseAction_1')}</Text>
                                         </Flex>
                                         <Flex p='7px' alignItems={'center'} gap='7px' cursor={'pointer'} _hover={{bg:'brand.hover_gray'}} onClick={() => {setShowChangeAction(false);setSendAction('next');localStorage.setItem('sendAction','next')}}>
-                                            <Text whiteSpace={'nowrap'}>Próximo ticket en la vista</Text>
+                                            <Text whiteSpace={'nowrap'}>{t('CloseAction_2')}</Text>
                                         </Flex>
                                         <Flex p='7px' alignItems={'center'} gap='7px' cursor={'pointer'} _hover={{bg:'brand.hover_gray'}} onClick={() => {setShowChangeAction(false);setSendAction('mantain');localStorage.setItem('sendAction','mantain')}}>
-                                            <Text whiteSpace={'nowrap'}>Mantener ticket abierto</Text>
+                                            <Text whiteSpace={'nowrap'}>{t('CloseAction_3')}</Text>
                                         </Flex>
                                     </MotionBox>
                                 </Portal>}
                     
                                 <Flex ref={actionNoteRef} fontSize={'.7em'}  cursor={'pointer'} gap='5px' alignItems={'center'} onClick={() => setShowChangeAction(!showChangeAction)}> 
-                                    <Text  whiteSpace={'nowrap'}>{sendAction === 'close'?'Cerrar pestaña':sendAction === 'next'?'Próximo ticket en la vista':'Mantener ticket abierto'}</Text>
+                                    <Text  whiteSpace={'nowrap'}>{sendAction === 'close'?t('CloseAction_1'):sendAction === 'next'?t('CloseAction_2'):t('CloseAction_3')}</Text>
                                     <Icon className={ showChangeAction? "rotate-icon-up" : "rotate-icon-down"} as={IoIosArrowDown} boxSize={'13px'}/>
                                 </Flex>
                             </Box>
@@ -582,12 +573,12 @@ function TextEditor({clientName, ticketData, updateData, deleteHeaderSection, ta
                                         <MotionBox bottom={window.innerHeight - (sendLikeButtonRef.current?.getBoundingClientRect().top || 0) + 10}  right={window.innerWidth - (sendLikeButtonRef.current?.getBoundingClientRect().right || 0)} ref={sendLikeBoxRef} initial={{ opacity: 0, marginBottom: -10}} animate={{ opacity: 1, marginBottom: 0 }}  exit={{ opacity: 0, marginBottom: -10}} transition={{ duration: 0.2,  ease: [0.0, 0.9, 0.9, 1.0]}} 
                                             fontSize={'.8em'} overflow={'hidden'} boxShadow={'0px 0px 10px rgba(0, 0, 0, 0.2)'} bg='white' zIndex={1000}   position={'absolute'} borderRadius={'.3rem'} borderWidth={'1px'} borderColor={'gray.300'}>
                                         {Object.keys(statesMap).map((state, index) => (
-                                        (state !== 'closed' && state !== 'new') && 
-                                            <Flex alignItems='center' key={`state-${index}`}  onClick={() => handleButtonClick(state as 'new' | 'open' | 'pending' | 'solved' | 'closed')} py='7px' px='20px' gap='10px' cursor={'pointer'} _hover={{bg:'brand.hover_gray'}} >
-                                                <Box height={'10px'} width={'10px'} borderRadius={'.1rem'} bg={statesMap[state as 'new' | 'open' | 'pending' | 'solved' | 'closed'][1]}/>
-                                                <Text fontWeight={'medium'} whiteSpace={'nowrap'}>{statesMap[state as 'new' | 'open' | 'pending' | 'solved' | 'closed'][0]}</Text>
-                                            </Flex>
-                                        ))}
+                                            (state !== 'closed' && state !== 'new') && 
+                                                <Flex alignItems='center' key={`state-${index}`}  onClick={() => handleButtonClick(state as 'new' | 'open' | 'pending' | 'solved' | 'closed')} py='7px' px='20px' gap='10px' cursor={'pointer'} _hover={{bg:'brand.hover_gray'}} >
+                                                    <Box height={'10px'} width={'10px'} borderRadius={'.1rem'} bg={statesMap[state as 'new' | 'open' | 'pending' | 'solved' | 'closed'][0]}/>
+                                                    <Text fontWeight={'medium'} whiteSpace={'nowrap'}>{t(state)}</Text>
+                                                </Flex>
+                                            ))}
                                         </MotionBox>
                                     </Portal > }
 
@@ -595,7 +586,7 @@ function TextEditor({clientName, ticketData, updateData, deleteHeaderSection, ta
                                     <Flex  onClick={() => handleButtonClick('pending')} bg={'brand.gradient_blue'} px='10px' py='5px' borderRadius={'.5em 0 0 .5em'} color='white' _hover={{bg:'brand.gradient_blue_hover'}}>
                                         {waitingSend?<LoadingIconButton/> :
                                         <Flex alignItems={'center'} gap='10px'>
-                                            <Text whiteSpace={'nowrap'}  fontWeight={'medium'} fontSize={'.9em'} color='gray.200'>Enviar como <span style={{fontWeight:'500', color:'white'}}>{statesMap[ticketData.status as 'new' | 'open' | 'pending' | 'solved' | 'closed'][0]}</span></Text>
+                                            <Text whiteSpace={'nowrap'}  fontWeight={'medium'} fontSize={'.9em'} color='gray.200'>{t('SendLike')} <span style={{fontWeight:'500', color:'white'}}>{t(ticketData.status)}</span></Text>
                                         </Flex>}
                                     </Flex>
                                     <Flex ref={sendLikeButtonRef} onClick={() => {setShowSendLike(!showSendLike)}} bg={'linear-gradient(to right, rgba(51, 153, 255, 1), rgba(0, 102, 204, 1))'} justifyContent={'center'} px='7px'  borderRadius={'0 .5rem .5rem 0'} alignItems={'center'} color='white' _hover={{bg:'linear-gradient(to right, rgba(51, 133, 255, 1),rgba(0, 72, 204, 1))'}}>

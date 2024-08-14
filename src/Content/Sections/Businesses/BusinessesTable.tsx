@@ -1,5 +1,5 @@
 //REACT
-import { useState, useEffect, useRef, Fragment } from "react"
+import { useState, useEffect, useRef, Fragment, useMemo } from "react"
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from "../../../AuthContext" 
 //FETCH DATA
@@ -161,11 +161,16 @@ function ContactBusinessesTable ({addHeaderSection}:{addHeaderSection:HeaderSect
         else return ( <Text whiteSpace={'nowrap'} fontWeight={column === 'name'?'medium':'normal' } textOverflow={'ellipsis'} overflow={'hidden'}>{element === ''?'-':element}</Text>)
     }
 
+    
+    const memoizedCreateBusiness = useMemo(() => (
+        <ConfirmBox setShowBox={setShowCreateBusiness}>
+            <CreateBusiness setShowBox={setShowCreateBusiness} actionTrigger={(data:any) => fetchBusinessDataWithFilter(null)}/>
+        </ConfirmBox>
+    ), [showCreateBusiness])
+
     //FRONT
     return(<>
-        {showCreateBusiness && <ConfirmBox setShowBox={setShowCreateBusiness}>
-            <CreateBusiness setShowBox={setShowCreateBusiness} actionTrigger={(data:any) => fetchBusinessDataWithFilter(null)}/>
-        </ConfirmBox> }
+        {showCreateBusiness && memoizedCreateBusiness}
 
         <Box bg='white' height={'calc(100vh - 60px)'} maxW={'calc(100vw - 60px)'} overflowX={'scroll'} overflowY={'hidden'} p='2vw'>
     
@@ -210,8 +215,8 @@ function ContactBusinessesTable ({addHeaderSection}:{addHeaderSection:HeaderSect
                             {Object.keys(columnsBusinessesMap).map((column, index) => (<Fragment key={`businesses-header-${index}`}> 
                                 
                                 {(column !== 'id' && column !== 'contact_business_id' && column !== 'email_address' && column !== 'instagram_username' && column !== 'webchat_uuid' && column !== 'phone_number') && 
-                                    <Flex key={`business-header-${index}`} gap='2px' alignItems={'end'} flex={`${columnsBusinessesMap[column][1]/10} 0 ${columnsBusinessesMap[column][1]}px`}> 
-                                        <Text cursor='pointer' onClick={() => requestSort(column)}>{columnsBusinessesMap[column][0]}</Text>
+                                    <Flex key={`business-header-${index}`} gap='2px' alignItems={'end'} flex={`${columnsBusinessesMap[column]/10} 0 ${columnsBusinessesMap[column]}px`}> 
+                                        <Text cursor='pointer' onClick={() => requestSort(column)}>{columnsBusinessesMap[column]}</Text>
                                         {getSortIcon(column)}
                                     </Flex>
                                 }
@@ -222,7 +227,7 @@ function ContactBusinessesTable ({addHeaderSection}:{addHeaderSection:HeaderSect
                                 {Object.keys(columnsBusinessesMap).map((column:string, index2:number) => (
                                     <Fragment  key={`business-cell-${index}-${index2}`} > 
                                         {(column !== 'id' && column !== 'contact_business_id' && column !== 'email_address' && column !== 'instagram_username' && column !== 'webchat_uuid' && column !== 'phone_number') && 
-                                        <Flex  key={`business-cell-${index}-${index2}`}  gap='2px' alignItems={'end'} flex={`${columnsBusinessesMap[column][1]/10} 0 ${columnsBusinessesMap[column][1]}px`}> 
+                                        <Flex  key={`business-cell-${index}-${index2}`}  gap='2px' alignItems={'end'} flex={`${columnsBusinessesMap[column]/10} 0 ${columnsBusinessesMap[column]}px`}> 
                                             <CellStyle column={column} element={row[column]} />
                                         </Flex>}
                                 </Fragment>))}

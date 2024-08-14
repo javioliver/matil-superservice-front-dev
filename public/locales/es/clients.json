@@ -1,0 +1,19 @@
+{
+    "email_address": "Mail",
+    "phone_number":"Teléfono",
+    "instagram_username": "Instagram",
+    "webchat_uuid": "Web Id",
+    "google_business_id":"Google Business",
+    "id":"ID",
+    "contact_business_id": "Empresa",
+    "contact":"Contacto",
+    "name": "Nombre",
+    "language": "Idioma",
+    "rating": "Rating",
+    "last_interaction_at": "Última interacción",
+    "created_at": "Creado",
+    "notes": "Notas",
+    "labels": "Etiquetas",
+    "is_blocked":"Bloqueado",
+    "ClientUpdated":"El cliente #/{{{id}}}/ se actualizó correctamente"
+}

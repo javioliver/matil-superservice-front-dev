@@ -5,7 +5,7 @@
 //REACT
 import { createContext, useContext, useReducer, ReactNode } from 'react'
 //TYPING
-import { Clients, TicketColumn,  Channels , Tickets, TicketData, ClientColumn, ClientData, ContactBusinessesProps, ContactBusinessesTable, MessagesData, MessagesProps } from './Content/Constants/typing'
+import { Clients, TicketColumn,  Channels , Tickets, TicketData, ClientColumn, ClientData, ContactBusinessesProps, ContactBusinessesTable, Flows, MessagesData, MessagesProps, FlowsColumn } from './Content/Constants/typing'
 
 //TICKETS TABLE DATA TYPE
 type TicketsTable = {
@@ -26,6 +26,12 @@ type ContactBusinessesSection = {
     selectedIndex:number
     filters:{page_index:number, sort_by?:ClientColumn, search?:string, order?:'asc' | 'desc'}
 }
+//CLIENTS TABLE DATA TYPE
+type FlowsTable = {
+    data: Flows
+    selectedIndex:number
+    filters: {page_index:number,  channel_types:Channels[], sort_by?:FlowsColumn, search?:string, order?:'asc' | 'desc'}
+}
 //HEADER SECTIONS DATA TYPE (CLIENTS OR TICKETS)
 type HeaderSections = { 
     id:number
@@ -37,7 +43,7 @@ type HeaderSections = {
         clientData:ClientData | null, 
         clientTickets:Tickets | null,
         businessData:ContactBusinessesTable | null, 
-        businessClients:Clients | null
+        businessClients:Clients | null,
     }
 }
 //STATS SECTION DATA TYPE
@@ -53,6 +59,7 @@ type SessionData = {
     ticketsTable:TicketsTable[]
     clientsTable:ClientsTable | null
     contactBusinessesTable:ContactBusinessesSection | null
+    flowsTable:FlowsTable | null
     headerSectionsData:HeaderSections[]
     statsSectionData:StatsSectionData
 }
@@ -72,6 +79,7 @@ const initialState: SessionData = {
     ticketsTable: [],
     clientsTable: null,
     contactBusinessesTable:null,
+    flowsTable:null,
     headerSectionsData: [],
     statsSectionData: {
         tickets: { data: null, filters: { channels: [], selectedMonth: new Date().getFullYear(), selectedYear: new Date().getMonth() } },
@@ -240,6 +248,7 @@ const sessionReducer = (state: SessionData, action: { type: string; payload: any
                 ticketsTable: [],
                 clientsTable: null,
                 contactBusinessesTable:null,
+                flowsTable:null,
                 headerSectionsData: [],
                 statsSectionData: {
                     tickets: { data: null, filters: { channels: [], selectedMonth: new Date().getFullYear(), selectedYear: new Date().getMonth() } },

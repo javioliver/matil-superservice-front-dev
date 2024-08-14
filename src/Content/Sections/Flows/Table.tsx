@@ -16,49 +16,27 @@ import timeAgo from "../../Functions/timeAgo"
 import timeStampToDate from "../../Functions/timeStampToString"
 import copyToClipboard from "../../Functions/copyTextToClipboard"
 //TYPING
-import { columnsClientsMap, ContactChannel, languagesFlags, contactDicRegex, logosMap, ClientColumn, ClientData, Channels } from "../../Constants/typing" 
+import { columnsFlowsMap, ContactChannel, contactDicRegex, logosMap, FlowsColumn, Channels, FlowsData } from "../../Constants/typing" 
   
 //TYPING
 interface TableProps{
-    data: ClientData[] | undefined
+    data: FlowsData[] | undefined
     updateData:any
     maxWidth:string
-    filters:{page_index:number, channel_types:Channels[], search?:string, sort_by?:ClientColumn, order?:'asc' | 'desc'}
+    filters:{page_index:number, channel_types:Channels[], search?:string, sort_by?:FlowsColumn, order?:'asc' | 'desc'}
     currentIndex?:number
 }
 
 
 //GET THE CELL STYLE
-const CellStyle = ({ column, element }:{column:ClientColumn, element:any}) => {
+const CellStyle = ({ column, element }:{column:FlowsColumn, element:any}) => {
 
-if (column === 'created_at' ||  column === 'last_interaction_at' )  
+if (column === 'created_at' ||  column === 'updated_at' )  
 return(
     <Tooltip  label={timeStampToDate(element as string)}  placement='top' hasArrow bg='white' color='black'  borderRadius='.4rem' fontSize='sm' p='6px'> 
         <Text whiteSpace={'nowrap'} textOverflow={'ellipsis'} overflow={'hidden'}>{timeAgo(element as string)}</Text>
     </Tooltip>)
-else if (column === 'labels') {
-        return(<> 
-        <Flex minH={'35px'} alignItems={'center'}> 
-        {element === ''? <Text>-</Text>:
-            <Flex gap='5px' flexWrap={'wrap'}>
-                {element.split(',').map((label:string, index:number) => (
-                    <Flex bg='gray.200' borderColor={'gray.300'} borderWidth={'1px'} p='4px' borderRadius={'.5rem'} fontSize={'.8em'} key={`client-label-${index}`}>
-                        <Text>{label}</Text>
-                    </Flex>
-                ))}
-            </Flex>
-        }
-        </Flex>
-    </>)
-}
-else if (column === 'language') {
-    return(
-    <Flex gap='5px' alignItems={'center'}>
-        <Text whiteSpace={'nowrap'} textOverflow={'ellipsis'} overflow={'hidden'}>{typeof element === 'string' && element in languagesFlags ?languagesFlags[element][0]:'No detectado'}</Text>
-        <Text fontSize={'.8em'}>{typeof element === 'string' && element in languagesFlags ?languagesFlags[element][1]:'🏴󠁥󠁳󠁣󠁴󠁿'}</Text>
-        </Flex>)
-}   
-else if (column === 'is_blocked') return <Text color={element?'red':'black'}>{element?'Bloqueado':'Activo'}</Text>  
+
 else return ( <Text whiteSpace={'nowrap'} textOverflow={'ellipsis'}  fontWeight={column === 'name'?'medium':'normal'}  overflow={'hidden'} >{element === ''?'-':element}</Text>)
 }
 
@@ -66,7 +44,7 @@ else return ( <Text whiteSpace={'nowrap'} textOverflow={'ellipsis'}  fontWeight=
 const Table = ({ data, updateData, maxWidth, filters, currentIndex = -1 }:TableProps ) =>{
      
     //TRANSLATION
-    const { t } = useTranslation('clients')
+    const { t } = useTranslation('flows')
 
     //NAVIGATE FUNCTION
     const navigate = useNavigate()
@@ -88,13 +66,13 @@ const Table = ({ data, updateData, maxWidth, filters, currentIndex = -1 }:TableP
     }, [])
 
     //OBTAIN COLUMNS
-    const excludeKeys = ['id', 'contact_business_id', 'phone_number', 'email_address', 'instagram_username', 'webchat_uuid', 'google_business_review_id']
+    const excludeKeys = ['id']
     const columns = useMemo(() => {
         return data?.length
           ? Object.keys(data[0]).filter((key) => !excludeKeys.includes(key))
           : []
       }, [data])
-    const totalWidth = useMemo(() => {return columns.reduce((acc, value) => acc + columnsClientsMap[value as ClientColumn] + 20, 0) + 20 + 150}, [columns])
+    const totalWidth = useMemo(() => {return columns.reduce((acc, value) => acc + columnsFlowsMap[value as FlowsColumn] + 20, 0) + 20 + 150}, [columns])
 
     const [selectedIndex, setSelectedIndex] = useState<number>(currentIndex)
     useEffect(() => {setSelectedIndex(currentIndex)},[currentIndex])
@@ -145,7 +123,7 @@ const Table = ({ data, updateData, maxWidth, filters, currentIndex = -1 }:TableP
     //SORT LOGIC
     const requestSort = (key: string) => {
         const direction = (filters.sort_by === key && filters.order === 'asc') ? 'desc' : 'asc';
-        updateData({...filters, sort_by: key as ClientColumn, order: direction as 'asc' | 'desc'})
+        updateData({...filters, sort_by: key as FlowsColumn, order: direction as 'asc' | 'desc'})
      }
     const getSortIcon = (header: string) => {
         if (filters.sort_by === header) return filters.order === 'asc' ? <IoMdArrowDropup size='20px' /> : <IoMdArrowDropdown size='20px' />
@@ -155,7 +133,7 @@ const Table = ({ data, updateData, maxWidth, filters, currentIndex = -1 }:TableP
 
     const clickRow = (id:number, index:number) => {
         session.dispatch({type:'UPDATE_CLIENTS_TABLE_SELECTED_ITEM', payload:{index}})
-        navigate(`/clients/client/${id}`)
+        navigate(`/flows/flow/${id}`)
     }
 
     //FRONT
@@ -169,10 +147,10 @@ const Table = ({ data, updateData, maxWidth, filters, currentIndex = -1 }:TableP
         </Flex>:
          <> 
             <Flex ref={headerRef}  borderColor={'gray.300'}  borderTopRadius={'.5rem'} borderWidth={'1px'}minWidth={`${totalWidth}px`}  gap='20px' alignItems={'center'}  color='gray.500' p='10px' fontSize={'.9em'} bg='gray.100' fontWeight={'medium'}> 
-                {Object.keys(columnsClientsMap).map((column, index) => (
+                {Object.keys(columnsFlowsMap).map((column, index) => (
                 <Fragment key={`clients-header-${index}`}> 
                     {(column !== 'id' && column !== 'contact_business_id' && column !== 'email_address' && column !== 'instagram_username' && column !== 'webchat_uuid' && column !== 'phone_number' && column !== 'google_business_review_id') && 
-                        <Flex  gap='2px' alignItems={'end'} flex={`${columnsClientsMap[column]/10} 0 ${columnsClientsMap[column]}px`}> 
+                        <Flex  gap='2px' alignItems={'end'} flex={`${columnsFlowsMap[column]/10} 0 ${columnsFlowsMap[column]}px`}> 
                             <Text cursor='pointer' onClick={() => requestSort(column)}>{t(column)}</Text>
                             {getSortIcon(column)}
                         </Flex>
@@ -184,7 +162,7 @@ const Table = ({ data, updateData, maxWidth, filters, currentIndex = -1 }:TableP
                     <Flex overflow={'hidden'} data-index={index}  alignItems={'center'} position={'relative'}  key={`clients-row-${index}`}  onClick={() => clickRow(row.id, index)} cursor='pointer' borderRadius={index === data.length - 1?'0 0 .5rem .5rem':'0'} borderWidth={'0 1px 1px 1px'} borderColor={'gray.300'} bg={selectedIndex === index ? 'blue.50':index%2 === 1?'#FCFCFC':'white'} gap='20px' fontSize={'.9em'} color='black' p='10px' _hover={{bg:'blue.50'}} > 
                         {selectedIndex === index && <Box position='absolute' left={0} top={0} height={'100%'} width={'2px'} bg='blue.400'/>}
 
-                        {Object.keys(columnsClientsMap).map((column:string, index2:number) => {
+                        {Object.keys(columnsFlowsMap).map((column:string, index2:number) => {
                             
                             const cellKey = `clients-cell-${index}-${index2}`;
 
@@ -207,8 +185,8 @@ const Table = ({ data, updateData, maxWidth, filters, currentIndex = -1 }:TableP
                             else return (
                             <Fragment key={cellKey}> 
                             {(column !== 'id' && column !== 'contact_business_id' &&  column !== 'google_business_review_id' && column !== 'email_address' && column !== 'instagram_username' && column !== 'webchat_uuid' && column !== 'phone_number') && 
-                                <Flex  minW={0}  gap='2px' alignItems={'center'} flex={`${columnsClientsMap[column]/10} 0 ${columnsClientsMap[column]}px`}> 
-                                    <CellStyle column={column as ClientColumn} element={row[column as ClientColumn]} />
+                                <Flex  minW={0}  gap='2px' alignItems={'center'} flex={`${columnsFlowsMap[column]/10} 0 ${columnsFlowsMap[column]}px`}> 
+                                    <CellStyle column={column as FlowsColumn} element={row[column as FlowsColumn]} />
                                 </Flex>
                                 }
                             </Fragment>)

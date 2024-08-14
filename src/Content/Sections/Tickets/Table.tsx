@@ -7,6 +7,7 @@ import { useState, useMemo, useRef, useEffect, Fragment } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAuth } from "../../../AuthContext"
 import { useSession } from "../../../SessionContext"
+import { useTranslation } from 'react-i18next'
 //FETCH DATA
 import fetchData from "../../API/fetchData"
 //FRONT
@@ -27,7 +28,7 @@ import { BsTrash3Fill } from "react-icons/bs"
 
 import { MdDeselect } from "react-icons/md"
 import { FaExclamationCircle, FaExclamationTriangle, FaInfoCircle, FaCheckCircle } from 'react-icons/fa'
-import { FaArrowRotateLeft, FaExclamation, FaCheck } from "react-icons/fa6"
+import { FaArrowRotateLeft } from "react-icons/fa6"
 //TYPING
 import { columnsTicketsMap, TicketColumn,  TicketsTableProps, logosMap, Channels, ViewType } from "../../Constants/typing" 
  
@@ -46,21 +47,21 @@ type Status = 'new' | 'open' | 'solved' | 'pending' | 'closed'
 const validStatuses: Status[] = ['new', 'open', 'solved', 'pending', 'closed']
 
 //ALERT LEVEL COMPONENT
-const AlertLevel = ({ rating }:{rating:number}) => {
+const AlertLevel = ({t,  rating }:{t:any, rating:number}) => {
     const getAlertDetails = (rating:number) => {
         switch (rating) {
             case 0:
-                return { color: 'green.500', icon: FaCheckCircle, label: 'Baja (0)' }
+                return { color: 'green.500', icon: FaCheckCircle, label: `${t('Priority_0')} (0)` }
             case 1:
-                return { color: 'yellow.500', icon: FaInfoCircle, label: 'Media (1)' }
+                return { color: 'yellow.500', icon: FaInfoCircle, label: `${t('Priority_1')} (1)` }
             case 2:
-                return { color: 'orange.500', icon: FaExclamationTriangle, label: 'Alta (2)' }
+                return { color: 'orange.500', icon: FaExclamationTriangle, label: `${t('Priority_2')} (2)` }
             case 3:
-                return { color: 'red.500', icon: FaExclamationCircle, label: 'Muy Alta (3)' }
+                return { color: 'red.500', icon: FaExclamationCircle, label: `${t('Priority_3')} (3)` }
             case 4:
-                return { color: 'red.700', icon: FaExclamationCircle, label: 'Urgente (4)' }
+                return { color: 'red.700', icon: FaExclamationCircle, label: `${t('Priority_4')} (4)` }
             default:
-                return { color: 'gray.500', icon: FaInfoCircle, label: 'Desconocido' }
+                return { color: 'green.500', icon: FaCheckCircle, label: `${t('Priority_0')} (0)` }
         }
     }
     const { color, icon, label } = getAlertDetails(rating)
@@ -75,18 +76,18 @@ const AlertLevel = ({ rating }:{rating:number}) => {
 }
 
 //GET THE CELL STYLE
-const CellStyle = ({column, element, auth}:{column:TicketColumn, element:string | number | boolean, auth:any}) => {
+const CellStyle = ({t, column, element, auth}:{t:any, column:TicketColumn, element:string | number | boolean, auth:any}) => {
     if (column === 'local_id') return  <Text color='gray' whiteSpace={'nowrap'} textOverflow={'ellipsis'} overflow={'hidden'}>#{element}</Text>
-    else if (column === 'user_id') return  <Text fontWeight={'medium'} whiteSpace={'nowrap'} textOverflow={'ellipsis'} overflow={'hidden'}>{element === -1 ?'Matilda':element === 0 ? 'Sin agente':auth.authData.users[element as string | number].name}</Text>
+    else if (column === 'user_id') return  <Text fontWeight={'medium'} whiteSpace={'nowrap'} textOverflow={'ellipsis'} overflow={'hidden'}>{element === -1 ?'Matilda':element === 0 ? t('NoAgent'):auth.authData.users[element as string | number].name}</Text>
     else if (column === 'unseen_changes') 
         return(
         <Flex color={element?'red':'green'} alignItems={'center'} gap='5px'> 
             <Icon as={element?FaExclamationCircle:FaCheckCircle} />
-            <Text>{element?'No leídos':'Ninguno'}</Text>
+            <Text>{element?t('NotRead'):t('Any')}</Text>
         </Flex>)
     
     else if (column === 'status' && typeof element === 'string' && validStatuses.includes(element as Status)) return  <StateMap state={element as Status}/>
-    else if (column === 'urgency_rating' && typeof element === 'number') {return <AlertLevel rating={element}/>}
+    else if (column === 'urgency_rating' && typeof element === 'number') {return <AlertLevel t={t} rating={element}/>}
     else if (column === 'created_at' || column === 'updated_at' || column === 'solved_at' || column === 'closed_at') {
         return(
         <Tooltip  label={timeStampToDate(element as string)}  placement='top' hasArrow bg='white' color='black'  borderRadius='.4rem' fontSize='sm' p='6px'> 
@@ -97,16 +98,19 @@ const CellStyle = ({column, element, auth}:{column:TicketColumn, element:string 
     else if (column === 'channel_type') {
         return(
         <Flex gap='7px' alignItems={'center'}>
-            <Icon color='gray.600' as={typeof element === 'string' && element in logosMap ?logosMap[element as Channels][1]:FaInfoCircle}/>
-            <Text >{typeof element === 'string' && element in logosMap ?logosMap[element as Channels][0]:''}</Text>
+            <Icon color='gray.600' as={typeof element === 'string' && element in logosMap ?logosMap[element as Channels][0]:FaInfoCircle}/>
+            <Text >{t(element)}</Text>
          </Flex>)
     }     
     else return ( <Text whiteSpace={'nowrap'} textOverflow={'ellipsis'} overflow={'hidden'}>{element}</Text>)
 }
 
 //MAIN FUNCTION
-const Table = ({ data, updateData, filters, section, maxWidth, selectedView, allIds, currentIndex = -1}:TableProps ) =>{
+const Table = ({ data, updateData, filters, section, maxWidth, selectedView, allIds, currentIndex = -1 }:TableProps ) =>{
      
+    //TRANSLATION
+    const { t } = useTranslation('tickets')
+
     //AUTH CONSTANT
     const auth = useAuth()
     const session = useSession()
@@ -130,7 +134,7 @@ const Table = ({ data, updateData, filters, section, maxWidth, selectedView, all
     useEffect(() => {
         const actualizarAltura = () => {
             const alturaHeader = headerRef.current ? headerRef.current.getBoundingClientRect().bottom : 100;
-            const alturaCalculada = window.innerHeight * 0.98 - alturaHeader -  (selectedElements.length > 0 ?80:0)
+            const alturaCalculada = (window.innerHeight -window.innerWidth * 0.02) - alturaHeader -  (selectedElements.length > 0 ?80:0)
             setAlturaCaja(alturaCalculada)
         }
         actualizarAltura()
@@ -190,7 +194,7 @@ const Table = ({ data, updateData, filters, section, maxWidth, selectedView, all
           ? Object.keys(data[0]).filter((key) => !excludeKeys.includes(key))
           : []
       }, [data])
-    const totalWidth = useMemo(() => {return columns.reduce((acc, value) => acc + columnsTicketsMap[value as TicketColumn][1] + 20, 0) + 20}, [columns])
+    const totalWidth = useMemo(() => {return columns.reduce((acc, value) => acc + columnsTicketsMap[value as TicketColumn] + 20, 0) + 20}, [columns])
 
     //SELECT ROWS
     const handleCheckboxChange = (element:number, isChecked:boolean) => {
@@ -218,7 +222,7 @@ const Table = ({ data, updateData, filters, section, maxWidth, selectedView, all
     //FUNCTION FOR RECOVERING TICKETS FROM THE BIN
     const recoverTickets = async() => {
         session.dispatch({type:'DELETE_VIEW_FROM_TICKET_LIST'})
-        await fetchData({endpoint:`superservice/${auth.authData.organizationId}/tickets/bin/restore`,  auth, method:'post', requestForm:{ticket_ids:selectedElements},toastMessages:{'works':`Tickets recuperados correctamente.`,'failed':`Hubo un problema al recuperar los tickets.`}})
+        await fetchData({endpoint:`superservice/${auth.authData.organizationId}/tickets/bin/restore`,  auth, method:'post', requestForm:{ticket_ids:selectedElements},toastMessages:{'works':t('TicketsRecovered'),'failed':('TicketsRecoveredFailed')}})
         const responseOrg = await fetchData({endpoint:`superservice/${auth.authData.organizationId}/user`, auth})
         auth.setAuthData({views: responseOrg?.data})
         updateData(null)
@@ -228,7 +232,7 @@ const Table = ({ data, updateData, filters, section, maxWidth, selectedView, all
     //DELETE A TICKET
     const deleteTickets = async() => {
         session.dispatch({type:'DELETE_VIEW_FROM_TICKET_LIST'})
-        const response = await fetchData({endpoint:`superservice/${auth.authData.organizationId}/tickets/bin`, setWaiting:setWaitingDelete, auth, method:'post', requestForm:{ticket_ids:selectedElements, days_until_deletion:30},toastMessages:{'works':`Tickets enviados a la papelera correctamente.`,'failed':`Hubo un problema al enviar los tickets a la papelera.`}})
+        const response = await fetchData({endpoint:`superservice/${auth.authData.organizationId}/tickets/bin`, setWaiting:setWaitingDelete, auth, method:'post', requestForm:{ticket_ids:selectedElements, days_until_deletion:30},toastMessages:{'works':t('TicketsTrash'),'failed':t('TicketsTrashFailed')}})
         if (response?.status === 200) {
             const responseOrg = await fetchData({endpoint:`superservice/${auth.authData.organizationId}/user`, auth})
             auth.setAuthData({views: responseOrg?.data})
@@ -244,7 +248,7 @@ const Table = ({ data, updateData, filters, section, maxWidth, selectedView, all
         const [showWaitingDeletePermanently, setShowWaitingDeletePermanently] = useState<boolean>(false)
         const deleteTicketsPermanently = async() => {
             if (isDeleteView) {
-                const response = await fetchData({endpoint:`superservice/${auth.authData.organizationId}/tickets/bin/delete`,  setWaiting:setShowWaitingDeletePermanently, auth:auth, method:'post', requestForm:{ticket_ids:selectedElements},toastMessages:{'works':`Tickets eliminados correctamente.`,'failed':`Hubo un problema al eliminar los tickets.`}})
+                const response = await fetchData({endpoint:`superservice/${auth.authData.organizationId}/tickets/bin/delete`,  setWaiting:setShowWaitingDeletePermanently, auth:auth, method:'post', requestForm:{ticket_ids:selectedElements},toastMessages:{'works':t('TicketsDeleted'),'failed':t('TicketsDeletedFailed')}})
                 const responseOrg = await fetchData({endpoint:`superservice/${auth.authData.organizationId}/user`, auth})
                 auth.setAuthData({views: responseOrg?.data})
                 updateData(null)
@@ -293,13 +297,13 @@ const Table = ({ data, updateData, filters, section, maxWidth, selectedView, all
                 {Object.keys(columnsTicketsMap).filter(column => column !== 'id').map((column) => (
                 <Fragment key={`header-${column}`}>
                     {column in data[0] &&
-                        <Flex alignItems={'center'} flex={`${columnsTicketsMap[column as TicketColumn][1]/10} 0 ${columnsTicketsMap[column as TicketColumn][1]}px`}> 
-                        <Text cursor='pointer'   onClick={() => requestSort(column)}>{columnsTicketsMap[column as TicketColumn][0]}</Text>
+                        <Flex alignItems={'center'} flex={`${columnsTicketsMap[column as TicketColumn]/10} 0 ${columnsTicketsMap[column as TicketColumn]}px`}> 
+                        <Text cursor='pointer' onClick={() => requestSort(column)}>{t(column)}</Text>
                         {getSortIcon(column)}
                     </Flex>}
                 </Fragment>))}
             </Flex>
-            <Box minWidth={`${totalWidth}px`}  overflowX={'hidden'} ref={tableBoxRef}  overflowY={'scroll'} maxH={alturaCaja}> 
+            <Box minWidth={`${totalWidth}px`} overflowX={'hidden'} ref={tableBoxRef} overflowY={'scroll'} maxH={alturaCaja}> 
                 {data.map((row:TicketsTableProps, index:number) =>( 
                     <Flex data-index={index}  position={'relative'} overflow={'hidden'} gap='20px' minWidth={`${totalWidth}px`} borderRadius={index === data.length - 1?'0 0 .5rem .5rem':'0'} borderWidth={'0 1px 1px 1px'}  cursor={isDeleteView?'not-allowed':'pointer'} onClick={() => handleClickColumn(row, index)} key={`row-${index}`}  bg={selectedIndex === index ? 'blue.50':selectedElements.includes(row.id)?'blue.100':index%2 === 1?'#FCFCFC':'white'} alignItems={'center'}  fontSize={'.9em'} color='black' p='10px' borderBottomWidth={'1px'} borderColor={'gray.300'} _hover={{bg:selectedElements.includes(row.id)?'blue.100':'blue.50'}}  > 
                          {selectedIndex === index && <Box position='absolute' left={0} top={0} height={'100%'} width={'2px'} bg='blue.400'/>}
@@ -308,8 +312,8 @@ const Table = ({ data, updateData, filters, section, maxWidth, selectedView, all
                         </Flex>}
                         {Object.keys(columnsTicketsMap).filter(column => column !== 'id').map((column:string, index:number) => (<Fragment key={`header-${column}`}>
                             {column in row &&
-                                <Flex minW={0} alignItems={'center'} flex={`${columnsTicketsMap[column as TicketColumn][1]/10} 0 ${columnsTicketsMap[column as TicketColumn][1]}px`}> 
-                                    <CellStyle column={column as TicketColumn} element={row[column]} auth={auth}/>
+                                <Flex minW={0} alignItems={'center'} flex={`${columnsTicketsMap[column as TicketColumn]/10} 0 ${columnsTicketsMap[column as TicketColumn]}px`}> 
+                                    <CellStyle t={t} column={column as TicketColumn} element={row[column]} auth={auth}/>
                                 </Flex>}
                             </Fragment>))}
                        

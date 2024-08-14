@@ -7,6 +7,7 @@ import { useState, useEffect, Suspense, lazy } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { useSession } from "../../../SessionContext"
 import { useAuth } from "../../../AuthContext"
+import { useTranslation } from 'react-i18next'
 //FETCH DATA
 import fetchData from "../../API/fetchData"
 //FRONT
@@ -36,6 +37,9 @@ interface TicketProps {
 //MAIN FUNCTION
 function Ticket ({ addHeaderSection, deleteHeaderSection, socket }:TicketProps) {
     
+    //TRANSLATION
+    const { t } = useTranslation('tickets')
+
     //CONSTANTS
     const auth = useAuth()
     const session = useSession()
@@ -153,11 +157,11 @@ function Ticket ({ addHeaderSection, deleteHeaderSection, socket }:TicketProps) 
                 
                 <Flex alignItems='center' gap='6px'   cursor={'pointer'}  bg={ticketSection === 'business' ?  'gray.300':'transparent' } height={'100%'}  borderRightWidth={'1px'} borderRightColor='gray.300'  px={{md:'10px',lg:'20px'}}> 
                     <Icon as={FaBuilding} boxSize={'14px'} />
-                    <Skeleton isLoaded={businessData !== null}> <Text whiteSpace={'nowrap'} fontSize={{md:'.8em',lg:'1em'}} >{businessData?.id === -1?'Sin empresa (Crear)':businessData?.name}</Text></Skeleton>
+                    <Skeleton isLoaded={businessData !== null}> <Text whiteSpace={'nowrap'} fontSize={{md:'.8em',lg:'1em'}} >{businessData?.id === -1?t('NoBusiness'):businessData?.name}</Text></Skeleton>
                 </Flex> 
-                <Flex alignItems='center' gap='6px'  onClick={() => setTicketSection('client')} cursor={'pointer'}  bg={ticketSection === 'client' ?  'gray.300':'transparent'}height={'100%'}  borderRightWidth={'1px'} borderRightColor='gray.300'  px={{md:'10px',lg:'20px'}}> 
+                <Flex alignItems='center' gap='6px'  onClick={() => setTicketSection('client')} cursor={'pointer'}  bg={ticketSection === 'client' ?  'gray.300':'transparent'} height={'100%'} borderRightWidth={'1px'} borderRightColor='gray.300'  px={{md:'10px',lg:'20px'}}> 
                     <Icon as={BsPersonFill} boxSize={'17px'} />
-                    <Skeleton isLoaded={clientData !== null}> <Text whiteSpace={'nowrap'} fontSize={{md:'.8em',lg:'1em'}} >{clientData?.name === ''? 'Cliente de la Web':clientData?.name}</Text></Skeleton>
+                    <Skeleton isLoaded={clientData !== null}> <Text whiteSpace={'nowrap'} fontSize={{md:'.8em',lg:'1em'}} >{clientData?.name === ''? t('WebClient'):clientData?.name}</Text></Skeleton>
                 </Flex> 
                 <Flex cursor='pointer' px={{md:'10px',lg:'20px'}} gap='8px' onClick={() => setTicketSection('ticket')} bg={ticketSection === 'ticket' ? 'gray.300': 'transparent' } height={'100%'} alignItems={'center'}> 
                   <Skeleton isLoaded={ticketData !== null}>
@@ -182,7 +186,6 @@ function Ticket ({ addHeaderSection, deleteHeaderSection, socket }:TicketProps) 
                 businessData={businessData} setBusinessData={setBusinessData} 
                 businessClients={businessClients} setBusinessClients={setBusinessClients}  />
                 :<>
-      
                   {(businessData?.id !== -1) ? 
                   <Business  socket={socket} comesFromTicket={true} businessData={businessData} setBusinessData={setBusinessData} businessClients={businessClients} setBusinessClients={setBusinessClients}  addHeaderSection={addHeaderSection}/>
                   :
