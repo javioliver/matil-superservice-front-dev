@@ -1,7 +1,7 @@
 //REACT
 import { useState, useCallback, useEffect, useRef, RefObject } from 'react'
 import { useAuth } from '../../../AuthContext.js'
-import { useActionData, useLocation } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 //FETCH DATA
 import fetchData from '../../API/fetchData'
@@ -9,28 +9,30 @@ import fetchData from '../../API/fetchData'
 import { Flex, Box, Button, Text, IconButton, Icon, Tooltip, Grid, NumberInput, NumberInputField } from '@chakra-ui/react'
 import { motion, AnimatePresence } from 'framer-motion'
 //FLOWS
-import ReactFlow, { Controls, Background, useNodesState, useEdgesState, addEdge, OnConnect } from 'reactflow'
+import ReactFlow, { Controls, Background, useNodesState, useEdgesState} from 'reactflow'
 import 'reactflow/dist/style.css'
 import { FirstNode } from './CustomNodes'
+import { AddNode } from './CustomNodes'
 import { BrancherNode } from './CustomNodes'
 import { ExtactorNode } from './CustomNodes'
+import { CustomEdge } from './CustomNodes'
 //COMPONENTS
 import EditText from '../../Components/EditText.js'
 import CustomSelect from '../../Components/CustomSelect.js'
 //ICONS
 import { RxCross2 } from 'react-icons/rx'
-import { FaPlus, FaExchangeAlt } from 'react-icons/fa'
-import { IoPerson, IoMail, IoSettingsSharp, IoSend, IoCheckmarkCircleSharp } from "react-icons/io5"
-import { FaPhone, FaClipboardList, FaLanguage, FaBox, FaHeadphones, FaTicket, FaUserCheck, FaCode, FaArrowRotateLeft,  } from "react-icons/fa6"
+import { FaPlus } from 'react-icons/fa'
 
 //TYPING
-import { languagesFlags, Channels, actionTypesDefinition, DataTypes, Branch } from '../../Constants/typing.js'
+import { languagesFlags, Channels, actionTypesDefinition, nodeTypesDefinition, DataTypes } from '../../Constants/typing.js'
 
 const nodeTypes = {
     trigger: FirstNode,
+    add:AddNode,
     brancher:BrancherNode,
     extractor:ExtactorNode,
 }
+const edgeTypes = { custom: CustomEdge }
 
 const Flow = () => {
 
@@ -40,7 +42,6 @@ const Flow = () => {
     //CONSTANTS
     const auth = useAuth()
     const location = useLocation().pathname
-
   
     //MOTION BOX
     const MotionBox = motion(Box)
@@ -48,33 +49,96 @@ const Flow = () => {
     //REFS AND BAR PROPS
     const flowBoxRef = useRef<HTMLDivElement>(null)
     const nameInputRef = useRef<HTMLDivElement>(null)
-    const conditionsRef = useRef<HTMLDivElement>(null)
-    const actionsRef = useRef<HTMLDivElement>(null)
+
+    //TRACK EACH COLUMNS
+    const [columnsIndexes, setColumnIndexes] = useState<string[][]>([])
 
     //SHOW NODES EDITOR
     const [showNodesAction, setShowNodesAction] = useState<null | {nodeId:string, actionType:actionTypesDefinition, actionData:any}>(null)
 
     //FLOW DATA
-    const [channels, setChannels] = useState<Channels[]>([])
     const [nodes, setNodes, onNodesChange] = useNodesState([])
     const [edges, setEdges, onEdgesChange] = useEdgesState([])
     const [flowName, setFlowName] = useState<string>(t('NewFlow'))    
 
-    const onChange = (channels:Channels[]) => {
+    //EDIT THE CHANNELS OF THE FLOW
+    const setChannels = (channels:Channels[]) => {
         setNodes((nds) =>
           nds.map((node) => {
             if (node.id !== '0') {return node}
-            setChannels(channels)
-            return {
-              ...node,
-              data: {
-                ...node.data,
-                channels,
-              },
+            return {...node, data: {...node.data, channels},
             }
           })
         )
       }
+
+    //ADD AND DELETE NEW NODES FUNCTIONS
+    const addNewNode = (sourceData:{sourceId:string, sourceType:nodeTypesDefinition, branchIndex?:number}, targetType:nodeTypesDefinition) => {
+   
+        if (sourceData.sourceType === 'add') {
+            setNodes((nds) =>
+                {
+                    let newNodeObject:any
+                    if (targetType === 'brancher') newNodeObject = {id:String(nds.length - 1), position:{x:350, y:0}, data:{branches:[{name:'',conditions:[], next_node_index:null}], setShowNodesAction, editBranch, deleteNode}, type:targetType, dragging:false,deletable:false, draggable:false}
+                    else if (targetType === 'extractor') newNodeObject = {id:String(nds.length - 1), position:{x:350, y:0}, data:{branches:[], variables:[], setShowNodesAction, editBranch, editExtractor, deleteNode}, type:targetType, dragging:false,deletable:false, draggable:false}
+            
+                    setColumnIndexes((cols) => {
+                        let newColumns = [...cols];
+                        let sourceColumnIndex = -1;
+            
+                        // Encontrar la columna del nodo fuente
+                        cols.forEach((col, index) => {
+                            if (col.includes(sourceData.sourceId)) {
+                                sourceColumnIndex = index;
+                            }
+                        });
+            
+                        // Determinar la columna donde colocar el nuevo nodo
+                        let targetColumnIndex = sourceColumnIndex + 1;
+            
+                        // Si no existe la columna destino, crearla
+                        if (targetColumnIndex >= newColumns.length) {
+                            newColumns.push([]);
+                        }
+            
+                        // Agregar el nuevo nodo a la columna correcta
+                        newColumns[targetColumnIndex] = [...newColumns[targetColumnIndex], newNodeId];
+            
+                        return newColumns;
+                    });
+
+                    return nds.map((node) => {
+                        if (node.id !== '1') return node
+                        return newNodeObject
+                    })
+                }
+            )
+        }
+    }
+    const deleteNode = (sourceId:string) => {
+        setNodes((nds) => 
+            {
+                if (nds.length === 2) {
+                    return [
+                        {id:'0', position:{x:0, y:0}, data:{channels:[], setChannels}, type:'trigger', dragging:false, deletable:false, draggable:false},
+                        {id:'1', position:{x:300, y:0}, data:{addNewNode}, type:'add', dragging:false, deletable:false, draggable:false}
+                    ]
+                }
+                setColumnIndexes((cols) => {
+                    // Remover el nodo de la columna
+                    let updatedColumns = cols.map(col => col.filter(id => id !== sourceId));
+        
+                    // Eliminar columnas vacías si es necesario
+                    updatedColumns = updatedColumns.filter(col => col.length > 0);
+        
+                    return updatedColumns;
+                });
+        
+                return nds.filter((node) => node.id !== sourceId)
+            }
+        )}
+
+     
 
     //EDIT A CONDITION FROM A BRANCH
     const editBranchConditions = (nodeId:string | undefined, index:number | undefined, newConditions?:{variable_index:number, op:string, value:any}[], type?:'add' | 'remove' | 'edit') => {
@@ -99,7 +163,7 @@ const Flow = () => {
       )
     }
 
-    //ADD OR DELTE BRANCHES
+    //ADD OR DELETE BRANCHES
     const editBranch = (nodeId:string | undefined, index:number | undefined, type:'remove' | 'add') => {
         setNodes((nds) => nds.map((node) => {
             if (node.id !== nodeId) return node
@@ -117,14 +181,38 @@ const Flow = () => {
       )
     }
 
+    //ADD OR DELETE VARIABLE IN EXTRACTOR
+    const editExtractor = (nodeId:string | undefined, index:number | undefined, type:'remove' | 'add') => {
+        setNodes((nds) => nds.map((node) => {
+            if (node.id !== nodeId) return node
+            let updatedVariables
+            if (type === 'remove') updatedVariables = node.data.variables.filter((_:any, idx:number) => idx !== index)
+            else if (type === 'add') updatedVariables = [...node.data.variables, { index: 0, message:{type:'generative', generation_instructions:'', preespecified_messages:{}} }]
+            return {
+                ...node,
+                data: {
+                ...node.data,
+                variables: updatedVariables
+            }}
+        
+        })
+      ) 
+    }
+    
     //FETCH INITIAL DATA
     useEffect(() => {
         const fetchInitialData = async () => {
             if (location.endsWith('create')) {
-                setNodes([{id:'0', position:{x:0, y:0}, data:{channels, setChannels:onChange}, type:'trigger', dragging:false, deletable:false, draggable:false},
-                {id:'1', position:{x:400, y:0}, data:{branches:[], setShowNodesAction, editBranch}, type:'brancher', dragging:false,deletable:false, draggable:false}
-            ])
-                setEdges([])
+                setNodes([
+                    {id:'0', position:{x:0, y:0}, data:{channels:[], setChannels}, type:'trigger', dragging:false, deletable:false, draggable:false},
+                        {id:'1', position:{x:300, y:0}, data:{addNewNode}, type:'add', dragging:false, deletable:false, draggable:false}
+                //{id:'1', position:{x:350, y:0}, data:{branches:[], setShowNodesAction, editBranch}, type:'brancher', dragging:false,deletable:false, draggable:false},
+                //{id:'2', position:{x:700, y:0}, data:{branches:[], variables:[], setShowNodesAction, editBranch, editExtractor}, type:'extractor', dragging:false,deletable:false, draggable:false},
+                //{id:'3', position:{x:700, y:200}, data:{branches:[], variables:[], setShowNodesAction, editBranch, editExtractor}, type:'extractor', dragging:false,deletable:false, draggable:false}
+             ])
+                setEdges([
+                    { id: '0->1', type: 'custom', source: '0', target: '1' },
+                ])
             }
             else {
                 const flowId = location.split('/')[location.split('/').length - 1]
@@ -133,14 +221,6 @@ const Flow = () => {
         }
         fetchInitialData()
     }, [])
-
-        
-    //NODES LOGIC
-    const onConnect: OnConnect = useCallback(
-        (connection) => setEdges((edges) => addEdge(connection, edges)),
-        [setEdges]
-    )
-
 
 
     const NodesEditBox = () => {
@@ -159,10 +239,10 @@ const Flow = () => {
 
          
         const variableTypeList:DataTypes[] = ['bool', 'int', 'float', 'str', 'timestamp', 'list', 'json']
-        const variablesIndexes = [0, 1, 2, 3, 4, 5, 6]
-        const variablesLabelsMap:any = {}
-        variablesIndexes.forEach(type => {variablesLabelsMap[type] = t(variableTypeList[type])})
+        const variablesLabelsMap:{[key:number]:string} = {}
+        variableTypeList.forEach((type, index) => {variablesLabelsMap[index] = t(variableTypeList[index])})
 
+        
         const columnInequalities = {'bool':['eq', 'exists'], 'int':['leq', 'geq', 'eq', 'neq', 'in', 'nin', 'exists'], 'float':['leq', 'geq', 'eq', 'neq', 'in', 'nin', 'exists'], 'str':['eq', 'neq', 'in', 'nin', 'contains', 'ncontains', 'exists'], 'timestamp':['geq', 'leq', 'eq', 'neq', 'exists'], 'list':['contains', 'ncontains', 'exists'], 'json':['contains', 'ncontains', 'exists'] }
         const inequalitiesMap = {"eq":t('eq'), "neq": t('neq'), "leq": t('leq'), "geq": t('geq'), "in":t('in'), "nin":t('nin'), "contains": t('contains'), "ncontains": t('ncontains'), "exists":t('exists')}
     
@@ -208,7 +288,7 @@ const Flow = () => {
                         {branchData.conditions.map((condition:{variable_index:number, op:string, value:any}, index:number) => (
                             <Flex mt='.5vh'  key={`all-conditions-${index}`} alignItems='center' gap='20px'>
                                 <Box flex='2'> 
-                                    <CustomSelect containerRef={scrollRef} hide={false} selectedItem={condition.variable_index} setSelectedItem={(value) => editBranchConditions(showNodesAction.nodeId, showNodesAction.actionData.index, updateConditionInBranch(index, 'variable_index', value))} options={variablesIndexes} labelsMap={variablesLabelsMap} />
+                                    <CustomSelect containerRef={scrollRef} hide={false} selectedItem={condition.variable_index} setSelectedItem={(value) => editBranchConditions(showNodesAction.nodeId, showNodesAction.actionData.index, updateConditionInBranch(index, 'variable_index', value))} options={Array.from({length: 7}, (v, i) => i)} labelsMap={variablesLabelsMap} />
                                 </Box>
                                 <Box flex='1'>
                                     <CustomSelect containerRef={scrollRef} labelsMap={inequalitiesMap} hide={false} selectedItem={condition.op} setSelectedItem={(value) => editBranchConditions(showNodesAction.nodeId, showNodesAction.actionData.index, updateConditionInBranch(index, 'op', value))} options={columnInequalities[variableTypeList[condition.variable_index]]}/>
@@ -245,7 +325,7 @@ const Flow = () => {
 
 
             <Box width={'100%'} height={'100%'}bg='gray.100' ref={flowBoxRef} >   
-                <ReactFlow nodes={nodes} nodeTypes={nodeTypes} onNodesChange={onNodesChange} edges={edges} onEdgesChange={onEdgesChange} onConnect={onConnect} fitView>
+                <ReactFlow  nodes={nodes} nodeTypes={nodeTypes}  edgeTypes={edgeTypes} onNodesChange={onNodesChange} edges={edges} onEdgesChange={onEdgesChange} fitView>
                     <Controls />
                     <Background  gap={12} size={1} />
                 </ReactFlow>
