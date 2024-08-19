@@ -1445,3 +1445,34 @@ text-decoration: underline;
     transform: translateY(-10px);
   }
 }
+
+/*NODES BOX ANIMATION*/
+/* Define la animación para deslizar desde la derecha */
+@keyframes slideInRight {
+  from {
+    right: -600px;
+  }
+  to {
+    right: 0;
+  }
+}
+
+/* Define la animación para deslizar hacia la derecha */
+@keyframes slideOutRight {
+  from {
+    right: 0;
+  }
+  to {
+    right: -600px;
+  }
+}
+
+/* Clase para la animación de entrada */
+.slide-in {
+  animation: slideInRight 0.15s forwards;
+}
+
+/* Clase para la animación de salida */
+.slide-out {
+  animation: slideOutRight 0.15s forwards;
+}

@@ -27,13 +27,14 @@ interface CustomSelectProps<T extends string | number>  {
     iconsMap?: { [key in T]: [string, string | IconType] | [string, string | IconType, string]} | null
     containerRef?: RefObject<HTMLDivElement>
     isDisabled?:boolean
+    disabledOptions?:T[]
 }
 
 //MOTION BOX
 const MotionBox = motion(Box)
 
 //MAIN FUNCTION
-const CustomSelect = <T extends string | number>({options, selectedItem, setSelectedItem, hide, updateData=() => {},  labelsMap=null ,iconsMap=null, containerRef, isDisabled = false}: CustomSelectProps<T>) => {
+const CustomSelect = <T extends string | number>({options, selectedItem, setSelectedItem, hide, updateData=() => {},  labelsMap=null ,iconsMap=null, containerRef, isDisabled = false, disabledOptions}: CustomSelectProps<T>) => {
 
     //REFS
     const buttonRef = useRef<HTMLDivElement>(null)
@@ -62,8 +63,8 @@ const CustomSelect = <T extends string | number>({options, selectedItem, setSele
                         <MotionBox initial={{ opacity: 0, marginTop: boxPosition === 'bottom'?-10:10 }} animate={{ opacity: 1, marginTop: 0 }}  exit={{ opacity: 0,marginTop: boxPosition === 'bottom'?-10:10}} transition={{ duration: 0.2,  ease: [0.0, 0.9, 0.9, 1.0],   opacity: {duration: 0.2,  ease: [0.0, 0.9, 0.9, 1.0]}}}
                         top={boxStyle.top} bottom={boxStyle.bottom}right={boxStyle.right} width={boxStyle.width} maxH='40vh' overflow={'scroll'} gap='10px' ref={boxRef} fontSize={'.9em'} boxShadow={'0px 0px 10px rgba(0, 0, 0, 0.2)'} bg='white' zIndex={100000}   position={'absolute'} borderRadius={'.3rem'} borderWidth={'1px'} borderColor={'gray.300'}>
                             {options.map((option:T, index:number) => (
-                                <Flex key={`${selectedItem}-option-${index}`} px='10px'   py='7px' cursor={'pointer'} justifyContent={'space-between'} alignItems={'center'} color={selectedItem === option?'blue.500':'black'} _hover={{bg:'brand.hover_gray'}}
-                                    onClick={() => {setSelectedItem(option as T); setShowList(false); setTimeout( () => updateData(), 0)}}>
+                                <Flex key={`${selectedItem}-option-${index}`} px='10px' bg={disabledOptions?.includes(option)?'gray.200':'transparent'}   py='7px' cursor={disabledOptions?.includes(option)?'not-allowed':'pointer'} justifyContent={'space-between'} alignItems={'center'} color={selectedItem === option?'blue.500':'black'} _hover={{bg:disabledOptions?.includes(option)?'gray.200':'brand.hover_gray'}}
+                                    onClick={() => {if (!disabledOptions?.includes(option)) {setSelectedItem(option as T); setShowList(false); setTimeout( () => updateData(), 0)} }}>
                                     <Flex gap='10px' alignItems={'center'} > 
                                         {iconsMap && <>{(typeof(iconsMap[option][1]) === 'string') ? <Text>{iconsMap[option]?.[1] as string}</Text>:<Icon  color={iconsMap?.[option]?.[2]?iconsMap?.[option]?.[2]:''} as={iconsMap?.[option]?.[1] as IconType}/>}</>}
                                         <Text>{iconsMap?iconsMap[option][0]:labelsMap?labelsMap[option]:option}</Text>

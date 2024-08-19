@@ -280,6 +280,11 @@ export type Branch = {
     conditions:{variable_index:number, op:string, value:any}[],
     next_node_index:number
   }
+export type FlowMessage = {
+    type:'generative' | 'preespecified',
+    generation_instructions:string,
+    preespecified_messages:{[key: string]:string}
+}
 
 //MESSAGES
 export type MessagesProps = {
