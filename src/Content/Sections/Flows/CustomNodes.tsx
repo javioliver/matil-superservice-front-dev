@@ -1,10 +1,13 @@
 //REACT
-import { Dispatch, SetStateAction , useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Dispatch, SetStateAction , useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useAuth } from '../../../AuthContext.js'
 //FRONT
 import { Flex, Icon, Box, Text, Checkbox, Grid, Button } from '@chakra-ui/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Handle, Position } from 'reactflow'
+//COMPONENTS
+import CustomSelect from '../../Components/CustomSelect.js'
 //FUNCTIONS
 import useOutsideClick from '../../Functions/clickOutside.js'
 //ICONS
@@ -17,7 +20,7 @@ import { IoSend, IoCheckmarkCircleSharp, IoArrowRedo } from "react-icons/io5"
 import { FaCodeBranch, FaDatabase, FaPlus, FaTicket, FaUserCheck, FaCode, FaArrowRotateLeft } from "react-icons/fa6"
 //TYPING
 import { languagesFlags, logosMap, Channels, actionTypesDefinition, nodeTypesDefinition, Branch, FlowMessage, DataTypes } from '../../Constants/typing.js'
-
+ 
 //FIRST NODE DATA
 interface TriggerNodeData {
   channels:Channels[]
@@ -26,29 +29,35 @@ interface TriggerNodeData {
 //BRANCHER NODE DATA
 interface BrancherNodeData {
   branches:Branch[]
-  setShowNodesAction:Dispatch<SetStateAction<null | {nodeId:string, actionType:actionTypesDefinition, actionData:any}>>
-  editBranch:(nodeId:string | undefined, index:number | undefined, type:'remove' | 'add' | 'remove-branch') => void
-  addNewNode:(sourceData:{sourceId:string, sourceType:nodeTypesDefinition, branchIndex?:number}, targetType:nodeTypesDefinition) => void
-  deleteNode:(nodeId:string, resize?:boolean, delete_branch?:boolean) => void
+  functions: {
+    setShowNodesAction:Dispatch<SetStateAction<null | {nodeId:string, actionType:actionTypesDefinition, actionData:any}>>
+    editBranch:(nodeId:string | undefined, index:number | undefined, type:'remove' | 'add' | 'remove-branch') => void
+    addNewNode:(sourceData:{sourceId:string, sourceType:nodeTypesDefinition, branchIndex?:number}, targetType:nodeTypesDefinition) => void
+    deleteNode:(nodeId:string, resize?:boolean, delete_branch?:boolean) => void
+  }
 }
 //EXTRACTOR NODE DATA
 interface ExtractorNodeData {
   variables:{index:number, message:FlowMessage}[]
   branches:Branch[]
-  setShowNodesAction:Dispatch<SetStateAction<null | {nodeId:string, actionType:actionTypesDefinition, actionData:any}>>
-  editBranch:(nodeId:string | undefined, index:number | undefined, type:'remove' | 'add' | 'remove-branch') => void
-  editExtractor:(nodeId:string | undefined, index:number | undefined, type:'remove' | 'add') => void
-  addNewNode:(sourceData:{sourceId:string, sourceType:nodeTypesDefinition, branchIndex?:number}, targetType:nodeTypesDefinition) => void
-  deleteNode:(nodeId:string, resize?:boolean, delete_branch?:boolean) => void
+  functions: {
+    setShowNodesAction:Dispatch<SetStateAction<null | {nodeId:string, actionType:actionTypesDefinition, actionData:any}>>
+    editBranch:(nodeId:string | undefined, index:number | undefined, type:'remove' | 'add' | 'remove-branch') => void
+    editExtractor:(nodeId:string | undefined, index:number | undefined, type:'remove' | 'add') => void
+    addNewNode:(sourceData:{sourceId:string, sourceType:nodeTypesDefinition, branchIndex?:number}, targetType:nodeTypesDefinition) => void
+    deleteNode:(nodeId:string, resize?:boolean, delete_branch?:boolean) => void
+  }
 }
 //SENDER MESSAGE DATA
 interface SenderNodeData {
   messages:FlowMessage[]
   next_node_index:string | null
-  deleteNode:(nodeId:string, resize?:boolean, delete_branch?:boolean) => void
-  addNewNode:(sourceData:{sourceId:string, sourceType:nodeTypesDefinition, branchIndex?:number}, targetType:nodeTypesDefinition) => void
-  setShowNodesAction:Dispatch<SetStateAction<null | {nodeId:string, actionType:actionTypesDefinition, actionData:any}>>
-  editMessage:(nodeId:string | undefined, index:number | undefined, type:'remove' | 'add' | 'edit', newMessage?:FlowMessage ) => void
+  functions: {
+    deleteNode:(nodeId:string, resize?:boolean, delete_branch?:boolean) => void
+    addNewNode:(sourceData:{sourceId:string, sourceType:nodeTypesDefinition, branchIndex?:number}, targetType:nodeTypesDefinition) => void
+    setShowNodesAction:Dispatch<SetStateAction<null | {nodeId:string, actionType:actionTypesDefinition, actionData:any}>>
+    editMessage:(nodeId:string | undefined, index:number | undefined, type:'remove' | 'add' | 'edit', newMessage?:FlowMessage ) => void
+  }
 }
 //FUNCTION NODE DATA
 interface FunctionNodeData {
@@ -57,31 +66,62 @@ interface FunctionNodeData {
   hardcoded_args:{[key:string]:any}
   error_node_ids:{[key:string]:number}
   success_node_id:number 
+  functions: {
+    deleteNode:(nodeId:string, resize?:boolean, delete_branch?:boolean) => void
+  }
 }
 //TERMINATOR NODE DATA
 interface TerminatorNodeData {
   messages:FlowMessage[]
   flow_result:string
+  functions: {
+    deleteNode:(nodeId:string, resize?:boolean, delete_branch?:boolean) => void
+    setShowNodesAction:Dispatch<SetStateAction<null | {nodeId:string, actionType:actionTypesDefinition, actionData:any}>>
+    editMessage:(nodeId:string | undefined, index:number | undefined, type:'remove' | 'add' | 'edit', newMessage?:FlowMessage ) => void
+  }
 }
 //TRANSFER NODE DATA
 interface TransferNodeData {
   messages:FlowMessage[]
   group_id:number
   user_id:number
+  functions: {
+    deleteNode:(nodeId:string, resize?:boolean, delete_branch?:boolean) => void
+    setShowNodesAction:Dispatch<SetStateAction<null | {nodeId:string, actionType:actionTypesDefinition, actionData:any}>>
+    editSimpleFlowData:(nodeId:string | undefined, keyToUpdate:string, newData:number | string ) => void
+    editMessage:(nodeId:string | undefined, index:number | undefined, type:'remove' | 'add' | 'edit', newMessage?:FlowMessage ) => void
+  }
 }
 //RESET NODE DATA
 interface ResetNodeData {
   messages:FlowMessage[]
-  variable_indices:number[]
+  variable_indexes:number[]
+  functions: {
+    deleteNode:(nodeId:string, resize?:boolean, delete_branch?:boolean) => void
+    setShowNodesAction:Dispatch<SetStateAction<null | {nodeId:string, actionType:actionTypesDefinition, actionData:any}>>
+    editSimpleFlowData:(nodeId:string | undefined, keyToUpdate:string, newData:number | string ) => void
+    editMessage:(nodeId:string | undefined, index:number | undefined, type:'remove' | 'add' | 'edit', newMessage?:FlowMessage ) => void
+  }
+
 }
 //FLOW SWAP NODE DATA
 interface FlowSwapData {
   messages:FlowMessage[]
   new_flow_uuid:string
+  functions: {
+    flowsIds:{name:string, id:string}[]
+    deleteNode:(nodeId:string, resize?:boolean, delete_branch?:boolean) => void
+    setShowNodesAction:Dispatch<SetStateAction<null | {nodeId:string, actionType:actionTypesDefinition, actionData:any}>>
+    editSimpleFlowData:(nodeId:string | undefined, keyToUpdate:string, newData:number | string ) => void
+    editMessage:(nodeId:string | undefined, index:number | undefined, type:'remove' | 'add' | 'edit', newMessage?:FlowMessage ) => void
+  }
 }
 //MOTHERSTRUCTURE UPDATES
 interface MotherStructureUpdateNodeData { 
   updates:{motherstructure:'ticket' | 'client' | 'contact_business', is_customizable:boolean, name:string, op:string, value:any}[]
+  functions: {
+    deleteNode:(nodeId:string, resize?:boolean, delete_branch?:boolean) => void
+  }
 }
 
 //MOTION BOX
@@ -157,10 +197,9 @@ export const AddNode = ({data}:{data:{addNewNode:(sourceData:{sourceId:string, s
         </Flex>
       </Box>
       <Handle position={Position.Left} type='target' style={{position:'absolute', top:'30px', visibility:'hidden'}} />
-
-  
     </>)
 }
+
 //BRANCHER NODE
 export const BrancherNode = ({id, data}:{id:string, data:BrancherNodeData}) => {
 
@@ -169,9 +208,9 @@ export const BrancherNode = ({id, data}:{id:string, data:BrancherNodeData}) => {
 
   return (<> 
       <Box cursor={'default'} bg="gray.50" borderRadius={'.5rem'} borderColor='gray.300' borderWidth={'1px'} width='250px'>
-          <NodeHeader nodeId={id} nodeType='brancher' isExpanded={isExpanded} setIsExpanded={setIsExpanded} deleteNode={data.deleteNode}/>
+          <NodeHeader nodeId={id} nodeType='brancher' isExpanded={isExpanded} setIsExpanded={setIsExpanded} deleteNode={data.functions.deleteNode}/>
           <Box p='15px'> 
-            {isExpanded && <BranchesComponent id={id} branches={data.branches }isExpanded={isExpanded} editBranch={data.editBranch} setShowNodesAction={data.setShowNodesAction} addNewNode={data.addNewNode}/>}
+            {isExpanded && <BranchesComponent id={id} branches={data.branches }isExpanded={isExpanded} editBranch={data.functions.editBranch} setShowNodesAction={data.functions.setShowNodesAction} addNewNode={data.functions.addNewNode}/>}
           </Box>
       </Box>
       <Handle position={Position.Left} type='target' style={{position:'absolute', top:'30px', visibility:'hidden'}} />
@@ -180,6 +219,7 @@ export const BrancherNode = ({id, data}:{id:string, data:BrancherNodeData}) => {
       {!isExpanded && <>{Array.from({length: data.branches.length + 1}, (v, i) => i).map((i) => (<Handle id={`handle-${i}`} key={`handle-${id}-${i}`}  position={Position.Right} type='source' style={{position:'absolute', top:'30px', visibility:'hidden'}}/>))}</>}
     </>)
 }
+
 //EXTRACTOR NODE
 export const ExtactorNode = ({id, data}:{id:string, data:ExtractorNodeData}) => {
     
@@ -198,12 +238,12 @@ export const ExtactorNode = ({id, data}:{id:string, data:ExtractorNodeData}) => 
 
     return(
       <Box position='relative' onMouseEnter={() => setIsHovering(true)} onMouseLeave={() => setIsHovering(false)}> 
-        <Box cursor={'pointer'}  mt='15px' boxShadow={'0 0 5px 1px rgba(0, 0, 0, 0.15)'}p='10px' borderRadius={'.3rem'} borderTopColor={'black'} borderTopWidth='3px' key={`variable-${index}`} onClick={() => data.setShowNodesAction({nodeId:id, actionType:'extract', actionData:{index}})}>
+        <Box cursor={'pointer'}  mt='15px' boxShadow={'0 0 5px 1px rgba(0, 0, 0, 0.15)'}p='10px' borderRadius={'.3rem'} borderTopColor={'#4A5568'} borderTopWidth='3px' key={`variable-${index}`} onClick={() => data.functions.setShowNodesAction({nodeId:id, actionType:'extract', actionData:{index}})}>
           <Text fontSize='.7em' fontWeight={'medium'}>{t(variableTypeList[variable.index])}</Text>
           <Text fontSize='.5em'  style={{overflow: 'hidden',display: '-webkit-box',WebkitLineClamp: 3, WebkitBoxOrient: 'vertical'}} ><span style={{fontWeight:500, color:'#4A5568'}}> {t('Instructions')}:</span> {variable.message.generation_instructions}</Text>
         </Box>
         {(isHovering) && 
-          <Flex alignItems={'center'} position={'absolute'} borderRadius={'full'} p='3px' top={'-7px'} zIndex={100} bg='white' boxShadow={'0 0 5px 1px rgba(0, 0, 0, 0.15)'} right={'-7px'} justifyContent={'center'} cursor={'pointer'} onClick={() => data.editExtractor(id, index, 'remove')}>
+          <Flex alignItems={'center'} position={'absolute'} borderRadius={'full'} p='3px' top={'-7px'} zIndex={100} bg='white' boxShadow={'0 0 5px 1px rgba(0, 0, 0, 0.15)'} right={'-7px'} justifyContent={'center'} cursor={'pointer'} onClick={() => data.functions.editExtractor(id, index, 'remove')}>
             <Icon boxSize={'10px'} as={BsTrash3Fill} color='red'/>
           </Flex>}
       </Box>
@@ -211,10 +251,10 @@ export const ExtactorNode = ({id, data}:{id:string, data:ExtractorNodeData}) => 
   }
   return (<>
       <Box cursor={'default'} bg="gray.50" borderRadius={'.5rem'} borderColor='gray.300' borderWidth={'1px'} width='250px'>
-        <NodeHeader nodeId={id} nodeType='extractor'  isExpanded={isExpanded} setIsExpanded={setIsExpanded} deleteNode={data.deleteNode}/>
+        <NodeHeader nodeId={id} nodeType='extractor'  isExpanded={isExpanded} setIsExpanded={setIsExpanded} deleteNode={data.functions.deleteNode}/>
    
-          {isExpanded && <Box p='15px'> 
-          <Flex  mt='10px' mb='10px' gap='15px' alignItems={'center'}  > 
+          {isExpanded && <Box p='0 15px 15px 15px'> 
+          <Flex  mb='10px' gap='15px' alignItems={'center'}  > 
             <Flex justifyContent={'center'} bg='red.400' alignItems={'center'} p='9px' borderRadius={'full'}> 
               <Icon color='white' boxSize={'17px'} as={FaDatabase}/>
             </Flex>
@@ -225,13 +265,13 @@ export const ExtactorNode = ({id, data}:{id:string, data:ExtractorNodeData}) => 
             <EditorComponent variable={variable} index={index}/>
           ))}
           <Flex flexDir={'row-reverse'}> 
-          <Button mt='15px' leftIcon={<FaPlus/>} size='xs'  onClick={() => data.editExtractor(id, -1, 'add')}>{t('AddData')}</Button>
+          <Button mt='15px' leftIcon={<FaPlus/>} size='xs'  onClick={() => data.functions.editExtractor(id, -1, 'add')}>{t('AddData')}</Button>
           </Flex>
-          {data.branches.length === 0 && <Button mt='15px' leftIcon={<FaPlus/>} size='sm' width={'100%'} onClick={() => data.editBranch(id, -1, 'add')}>{t('AddBranches')}</Button>}
+          {data.branches.length === 0 && <Button mt='15px' leftIcon={<FaPlus/>} size='sm' width={'100%'} onClick={() => data.functions.editBranch(id, -1, 'add')}>{t('AddBranches')}</Button>}
 
 
           {data.branches.length > 0 && <Box mt='30px'> 
-            <BranchesComponent id={id} branches={data.branches} editBranch={data.editBranch} isExpanded={true} setShowNodesAction={data.setShowNodesAction} addNewNode={data.addNewNode}/>
+            <BranchesComponent id={id} branches={data.branches} editBranch={data.functions.editBranch} isExpanded={true} setShowNodesAction={data.functions.setShowNodesAction} addNewNode={data.functions.addNewNode}/>
           </Box>}
         </Box>}
       </Box>
@@ -245,20 +285,227 @@ export const ExtactorNode = ({id, data}:{id:string, data:ExtractorNodeData}) => 
 //SEND MESSAGES NODE
 export const SenderNode = ({id, data}:{id:string, data:SenderNodeData}) => {
 
+  //TRANSLATION
+  const { t } = useTranslation('flows')
+
   //BOOLEAN FOR EXPANDING
   const [isExpanded, setIsExpanded] = useState<boolean>(true)
 
   return (<> 
     <Box cursor={'default'} bg="gray.50" borderRadius={'.5rem'} borderColor='gray.300' borderWidth={'1px'}  width='250px'>
-        <NodeHeader nodeId={id} nodeType='sender'  next_node_index={data.next_node_index} isExpanded={isExpanded} setIsExpanded={setIsExpanded} deleteNode={data.deleteNode} addNewNode={data.addNewNode}/>
-        <Box p='15px'> 
-          {isExpanded && <MessagesComponent id={id} messages={data.messages} setShowNodesAction={data.setShowNodesAction} editMessage={data.editMessage}/>}
-        </Box>
+        <NodeHeader nodeId={id} nodeType='sender'  next_node_index={data.next_node_index} isExpanded={isExpanded} setIsExpanded={setIsExpanded} deleteNode={data.functions.deleteNode} addNewNode={data.functions.addNewNode}/>
+ 
+          {isExpanded && <Box p='0 15px 15px 15px'> 
+            <Flex gap='15px' alignItems={'center'} > 
+              <Flex justifyContent={'center'} bg='brand.gradient_blue' alignItems={'center'} p='7px' borderRadius={'.5rem'}> 
+                <Icon color='white' boxSize={'15px'} as={IoSend}/>
+              </Flex>
+              <Text fontWeight={'medium'}>{t('Message')}</Text>
+            </Flex>
+          <MessagesComponent id={id} messages={data.messages} setShowNodesAction={data.functions.setShowNodesAction} editMessage={data.functions.editMessage}/>
+          </Box>}
     </Box>
 
     <Handle position={Position.Left} type='target' style={{position:'absolute', top:'30px', visibility:'hidden'}} />
     <Handle position={Position.Right} type='source' style={{visibility:'hidden', top:'30px', position:'absolute'}} />
   </>)
+}
+
+//TERMINATOR NODE
+export const TerminatorNode = ({id, data}:{id:string, data:TerminatorNodeData}) => {
+
+  //TRANSLATION
+  const { t } = useTranslation('flows')
+
+  //BOOLEAN FOR EXPANDING
+  const [isExpanded, setIsExpanded] = useState<boolean>(true)
+
+  return (<> 
+    <Box cursor={'default'} bg="gray.50" borderRadius={'.5rem'} borderColor='gray.300' borderWidth={'1px'}  width='250px'>
+        <NodeHeader nodeId={id} nodeType='terminator' isExpanded={isExpanded} setIsExpanded={setIsExpanded} deleteNode={data.functions.deleteNode}/>
+          {isExpanded && 
+          <Box p='0 15px 15px 15px'> 
+            <Flex gap='15px' alignItems={'center'} > 
+              <Flex justifyContent={'center'} bg='brand.gradient_blue' alignItems={'center'} p='7px' borderRadius={'.5rem'}> 
+                <Icon color='white' boxSize={'15px'} as={IoCheckmarkCircleSharp}/>
+              </Flex>
+              <Text fontWeight={'medium'} >{t('End')}</Text>
+            </Flex>
+            <Text mt='10px' fontSize={'.8em'} color='gray.600' fontWeight={'medium'}>{t('FlowMessagesTerminator')}:</Text>
+            <MessagesComponent id={id} messages={data.messages} setShowNodesAction={data.functions.setShowNodesAction} editMessage={data.functions.editMessage}/>
+          </Box>}
+
+    </Box>
+    <Handle position={Position.Left} type='target' style={{position:'absolute', top:'30px', visibility:'hidden'}} />
+
+    <Flex position="absolute" top="15px" ml="calc(100% + 2px)" minW='1000%' color="white"cursor={'pointer'} onClick={() => data.functions.setShowNodesAction({nodeId:id, actionType:'flow_result', actionData:{}})}>
+      <Box as="svg" width="2" height="2" mr='-1px' viewBox="0 0 10 10" mt='10px'>
+        <polygon points="0,5 10,0 10,10" fill="#F56565" />
+      </Box>
+      <Text fontSize=".8em" bg='red.400' borderRadius=".3em" p="5px"  maxW={'250px'} >
+        {data.flow_result ? data.flow_result : t('FlowResult')}
+      </Text>
+    </Flex>
+  </>)
+}
+
+//TRANSFER NODE
+export const TransferNode = ({id, data}:{id:string, data:TransferNodeData}) => {
+
+   //TRANSLATION
+   const { t } = useTranslation('flows')
+    const auth = useAuth()
+   //BOOLEAN FOR EXPANDING
+   const [isExpanded, setIsExpanded] = useState<boolean>(true)
+ 
+   let usersDict:{[key:number]:string} = {}
+   if (auth.authData.users) Object.keys(auth.authData?.users).map((key:any) => {if (auth?.authData?.users) usersDict[key] = auth?.authData?.users[key].name})
+   usersDict[0] = t('NoAgent')
+   usersDict[-1] = 'Matilda'
+
+   return (<> 
+     <Box cursor={'default'} bg="gray.50" borderRadius={'.5rem'} borderColor='gray.300' borderWidth={'1px'}  width='250px'>
+         <NodeHeader nodeId={id} nodeType='transfer' isExpanded={isExpanded} setIsExpanded={setIsExpanded} deleteNode={data.functions.deleteNode}/>
+           {isExpanded && 
+           <Box p='0 15px 15px 15px'> 
+             <Flex gap='15px' alignItems={'center'} > 
+               <Flex justifyContent={'center'} bg='brand.gradient_blue' alignItems={'center'} p='7px' borderRadius={'.5rem'}> 
+                 <Icon color='white' boxSize={'15px'} as={FaUserCheck}/>
+               </Flex>
+               <Text fontWeight={'medium'} >{t('Transfer')}</Text>
+             </Flex>
+             <Text mt='10px' fontSize={'.8em'} color='gray.600' fontWeight={'medium'}>{t('TransferAgent')}</Text>
+             <CustomSelect selectedItem={data.user_id} options={Object.keys(usersDict).map(key => parseInt(key))} labelsMap={usersDict} setSelectedItem={(value) => data.functions.editSimpleFlowData(id, 'user_id', value)} hide={false} />
+             <Text mt='10px' fontSize={'.8em'} color='gray.600' fontWeight={'medium'}>{t('TransferGroup')}</Text>
+             <CustomSelect selectedItem={data.user_id} options={Object.keys(usersDict).map(key => parseInt(key))} labelsMap={usersDict} setSelectedItem={(value) => data.functions.editSimpleFlowData(id, 'user_id', value)} hide={false} />
+             <Text mt='10px' fontSize={'.8em'} color='gray.600' fontWeight={'medium'}>{t('FlowMessagesTransfer')}:</Text>
+             <MessagesComponent id={id} messages={data.messages} setShowNodesAction={data.functions.setShowNodesAction} editMessage={data.functions.editMessage}/>
+           </Box>}
+ 
+     </Box>
+     <Handle position={Position.Left} type='target' style={{position:'absolute', top:'30px', visibility:'hidden'}} />
+   </>)
+}
+
+//TRANSFER NODE
+export const ResetNode = ({id, data}:{id:string, data:ResetNodeData}) => {
+
+  //TRANSLATION
+  const { t } = useTranslation('flows')
+
+  //BOOLEAN FOR TOGGING THE NODE VISIBILITY
+  const [isExpanded, setIsExpanded] = useState<boolean>(true)
+
+  return (<> 
+      <Box cursor={'default'} bg="gray.50" borderRadius={'.5rem'} borderColor='gray.300' borderWidth={'1px'} width='250px'>
+          <NodeHeader nodeId={id} nodeType='brancher' isExpanded={isExpanded} setIsExpanded={setIsExpanded} deleteNode={data.functions.deleteNode}/>
+          {isExpanded &&   
+            <Box p='0 15px 15px 15px'> 
+            <Flex gap='15px' alignItems={'center'} > 
+              <Flex justifyContent={'center'} bg='brand.gradient_blue' alignItems={'center'} p='7px' borderRadius={'.5rem'}> 
+                <Icon color='white' boxSize={'15px'} as={FaArrowRotateLeft}/>
+              </Flex>
+              <Text fontWeight={'medium'} >{t('Reset')}</Text>
+            </Flex>
+            <Text mt='10px' fontSize={'.8em'} color='gray.600' fontWeight={'medium'}>{t('ResetVariables')}</Text>
+            <MessagesComponent id={id} messages={data.messages} setShowNodesAction={data.functions.setShowNodesAction} editMessage={data.functions.editMessage}/>
+            <Text mt='10px' fontSize={'.8em'} color='gray.600' fontWeight={'medium'}>{t('ResetMessage')}</Text>
+            <MessagesComponent id={id} messages={data.messages} setShowNodesAction={data.functions.setShowNodesAction} editMessage={data.functions.editMessage}/>
+          </Box>}
+      </Box>
+      <Handle position={Position.Left} type='target' style={{position:'absolute', top:'30px', visibility:'hidden'}} />
+    </>)
+}
+
+//FLOW SWAP NODE
+export const FlowSwapNode = ({id, data}:{id:string, data:FlowSwapData}) => {
+
+  //TRANSLATION
+  const { t } = useTranslation('flows')
+
+  //BOOLEAN FOR TOGGING THE NODE VISIBILITY
+  const [isExpanded, setIsExpanded] = useState<boolean>(true)
+
+  const flowsIdsList:string[] = ['-1']
+  let flowsDict:{[key:string]:string} = {}
+  flowsDict['-1'] = t('NoFlow')
+  data.functions.flowsIds.forEach((flow) => {
+    flowsIdsList.push(flow.id)
+    flowsDict[flow.id] = flow.name
+  })
+  
+  return (<> 
+    <Box cursor={'default'} bg="gray.50" borderRadius={'.5rem'} borderColor='gray.300' borderWidth={'1px'}  width='250px'>
+        <NodeHeader nodeId={id} nodeType='transfer' isExpanded={isExpanded} setIsExpanded={setIsExpanded} deleteNode={data.functions.deleteNode}/>
+          {isExpanded && 
+          <Box p='0 15px 15px 15px'> 
+            <Flex gap='15px' alignItems={'center'} > 
+              <Flex justifyContent={'center'} bg='brand.gradient_blue' alignItems={'center'} p='7px' borderRadius={'.5rem'}> 
+                <Icon color='white' boxSize={'15px'} as={FaUserCheck}/>
+              </Flex>
+              <Text fontWeight={'medium'} >{t('Transfer')}</Text>
+            </Flex>
+            <Text mt='10px' fontSize={'.8em'} color='gray.600' fontWeight={'medium'}>{t('FlowSwap')}</Text>
+            <CustomSelect selectedItem={data.new_flow_uuid} options={flowsIdsList} labelsMap={flowsDict} setSelectedItem={(value) => data.functions.editSimpleFlowData(id, 'new_flow_uuid', value)} hide={false} />
+            <Text mt='10px' fontSize={'.8em'} color='gray.600' fontWeight={'medium'}>{t('FlowMessagesTransfer')}:</Text>
+            <MessagesComponent id={id} messages={data.messages} setShowNodesAction={data.functions.setShowNodesAction} editMessage={data.functions.editMessage}/>
+          </Box>}
+
+    </Box>
+    <Handle position={Position.Left} type='target' style={{position:'absolute', top:'30px', visibility:'hidden'}} />
+  </>)
+}
+
+//FUNCTION NODE
+export const FunctionNode = ({id, data}:{id:string, data:FunctionNodeData}) => {
+
+  //TRANSLATION
+  const { t } = useTranslation('flows')
+
+  //BOOLEAN FOR TOGGING THE NODE VISIBILITY
+  const [isExpanded, setIsExpanded] = useState<boolean>(true)
+
+  return (<> 
+      <Box cursor={'default'} bg="gray.50" borderRadius={'.5rem'} borderColor='gray.300' borderWidth={'1px'} width='250px'>
+          <NodeHeader nodeId={id} nodeType='brancher' isExpanded={isExpanded} setIsExpanded={setIsExpanded} deleteNode={data.functions.deleteNode}/>
+          {isExpanded &&   
+            <Box p='0 15px 15px 15px'> 
+            <Flex gap='15px' alignItems={'center'} > 
+              <Flex justifyContent={'center'} bg='brand.gradient_blue' alignItems={'center'} p='7px' borderRadius={'.5rem'}> 
+                <Icon color='white' boxSize={'15px'} as={IoCheckmarkCircleSharp}/>
+              </Flex>
+              <Text fontWeight={'medium'} >{t('End')}</Text>
+            </Flex>
+          </Box>}
+      </Box>
+      <Handle position={Position.Left} type='target' style={{position:'absolute', top:'30px', visibility:'hidden'}} />
+    </>)
+}
+
+//FUNCTION NODE
+export const MotherStructureUpdateNode = ({id, data}:{id:string, data:MotherStructureUpdateNodeData}) => {
+
+  //TRANSLATION
+  const { t } = useTranslation('flows')
+
+  //BOOLEAN FOR TOGGING THE NODE VISIBILITY
+  const [isExpanded, setIsExpanded] = useState<boolean>(true)
+
+  return (<> 
+      <Box cursor={'default'} bg="gray.50" borderRadius={'.5rem'} borderColor='gray.300' borderWidth={'1px'} width='250px'>
+          <NodeHeader nodeId={id} nodeType='brancher' isExpanded={isExpanded} setIsExpanded={setIsExpanded} deleteNode={data.functions.deleteNode}/>
+          {isExpanded &&   
+            <Box p='0 15px 15px 15px'> 
+            <Flex gap='15px' alignItems={'center'} > 
+              <Flex justifyContent={'center'} bg='brand.gradient_blue' alignItems={'center'} p='7px' borderRadius={'.5rem'}> 
+                <Icon color='white' boxSize={'15px'} as={IoCheckmarkCircleSharp}/>
+              </Flex>
+              <Text fontWeight={'medium'} >{t('End')}</Text>
+            </Flex>
+          </Box>}
+      </Box>
+      <Handle position={Position.Left} type='target' style={{position:'absolute', top:'30px', visibility:'hidden'}} />
+    </>)
 }
 
 //BOX CONTAINIG ALL THE NDOE TYPES
@@ -284,14 +531,15 @@ const NodesBox = ({disabledNodes, sourceData, addNewNode, clickFunc }:{disabledN
       <MotionBox initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}    exit={{ opacity: 0, scale: 0.95 }}  transition={{ duration: 0.1,  ease: [0.0, 0.9, 0.9, 1.0],   opacity: {duration: 0.1 }, scale: {duration: 0.1,  ease: [0.0, 0.9, 0.9, 1.0]}}}
       style={{ transformOrigin: 'bottom left' }} textAlign={'start'} minW={'180px'}  maxH='45vh' overflowY={'scroll'} bg='white' p='15px' zIndex={1000} boxShadow='0 0 10px 1px rgba(0, 0, 0, 0.15)' borderColor='gray.300' borderWidth='1px' borderRadius='.5rem'>
           <Grid templateColumns="repeat(1, 1fr)" autoRows="min-content">
-            {nodesList.map((node, index) => (
-              <Flex key={`node-type-${index}`} _hover={{bg:'brand.hover_gray'}} borderRadius={'.5rem'} p='5px' cursor={'pointer'}  alignItems={'center'} gap='10px' onClick={() => {addNewNode(sourceData, node.node_match);if (clickFunc) clickFunc()}}>
+            {nodesList.map((node, index) => (<> 
+              
+              {(!disabledNodes.includes(index)) && <Flex key={`node-type-${index}`} _hover={{bg:'brand.hover_gray'}} borderRadius={'.5rem'} p='5px' cursor={'pointer'}  alignItems={'center'} gap='10px' onClick={() => {addNewNode(sourceData, node.node_match);if (clickFunc) clickFunc()}}>
                   <Flex borderRadius={'.5rem'} bg={node.node_match === 'brancher'?'yellow.400':node.node_match === 'extractor'?'red.400':'brand.gradient_blue'} color='white' justifyContent={'center'} alignItems={'center'} p={'6px'}>
                       <Icon transform={node.node_match === 'brancher'?'rotate(90deg)':''} boxSize={'12px'} as={node.icon}/>
                   </Flex>
                   <Text fontSize={'.8em'} >{node.name}</Text>
-              </Flex>
-            ))}
+              </Flex>}
+            </>))}
         </Grid>
       </MotionBox>
     </AnimatePresence>
@@ -300,7 +548,9 @@ const NodesBox = ({disabledNodes, sourceData, addNewNode, clickFunc }:{disabledN
 
 //HEADER COMPONENT (SHARED FOR ALL NODES)
 const NodeHeader = ({nodeId, nodeType, isExpanded, setIsExpanded, deleteNode, addNewNode, next_node_index}:{nodeId:string, nodeType:nodeTypesDefinition, isExpanded:boolean, setIsExpanded:Dispatch<SetStateAction<boolean>>, deleteNode:(nodeId:string, resize?:boolean, delete_branch?:boolean) => void, addNewNode?:(sourceData:{sourceId:string, sourceType:nodeTypesDefinition, branchIndex?:number}, targetType:nodeTypesDefinition) => void, next_node_index?:string | null}) => {
-   
+
+  let disabledNodes:number[]
+  if (nodeType === 'brancher' || nodeType === 'sender' || nodeType === 'reset' || nodeType === 'motherstructure_updates') disabledNodes = [8]
   //TRANSLATION
   const { t } = useTranslation('flows')
 
@@ -346,7 +596,7 @@ const NodeHeader = ({nodeId, nodeType, isExpanded, setIsExpanded, deleteNode, ad
         </Box>
         <IoIosArrowDown onClick={() => setIsExpanded(!isExpanded)} className={!isExpanded ? "rotate-icon-up" : "rotate-icon-down"}/>
         
-        {isHovering && <> {next_node_index ? 
+        {(isHovering && addNewNode) && <> {next_node_index ? 
           <Flex cursor={'pointer'} onClick={() => deleteNode(nodeId, false, true)} position={'absolute'} left='100%' ml='-8px' zIndex={100} bg='white' display={'inline-flex'} p='4px' alignItems={'center'} justifyContent={'center'}  boxShadow={'0 0 5px 1px rgba(0, 0, 0, 0.15)'}  borderRadius={'50%'}>
             <Icon as={BsTrash3Fill} color='red' boxSize={'10px'}/>
           </Flex>

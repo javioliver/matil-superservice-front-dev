@@ -274,7 +274,7 @@ export const columnsFlowsMap: ColumnsMap = {
     updated_at: 150
  }
 export type nodeTypesDefinition = 'add' | 'extractor' | 'brancher' | 'sender' | 'function' | 'terminator' | 'transfer' | 'reset' | 'flow_swap' | 'motherstructure_updates'
-export type actionTypesDefinition = 'message' | 'condition' | 'extract'
+export type actionTypesDefinition = 'message' | 'condition' | 'extract' | 'flow_result'
 export type Branch = {
     name:string, 
     conditions:{variable_index:number, op:string, value:any}[],

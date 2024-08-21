@@ -44,8 +44,18 @@
     "MessageType":"Selecciona el tipo de mensaje",
     "AddLanguage":"Añadir idioma",
     "WriteMessage":"Escriba un mensaje",
+    "FlowMessagesTerminator":"Mensajes al terminar flujo",
+    "FlowResult":"Resultado del flujo",
+    "FlowResultPlaceholder":"Introduzca el resultado del flujo",
+    "TransferAgent":"Agente receptor",
+    "TransferGroup":"Grupo receptor",
+    "ResetMessage":"Mensajes al resetear las variables",
+    "ResetVariables":"Variables a resetear",
+    "FlowMessagesTransfer":"Mensajes al transferir el flujo",
+    "FlowSwapName":"Nuevo flujo",
+    "NoAgent":"Sin agente",
+    "NoFlow":"Sin flujo",
     
-
     "Name":"Nombre",
     "Name_Des":"Extraer el nombre de un cliente-",
     "Phone":"Teléfono",
@@ -78,9 +88,6 @@
     "Reset_Des": "Resetear las variables que se han extraído.",
     "CSAT": "Enviar encuesta",
     "CSAT_Des": "Enviar encuesta de satisfacción.",
-
-
-   
     "SelectType":"Selecciona un tipo",
     "Channels":"Canales",
     "ClientMessage":"Mensaje de un cliente",

@@ -9,13 +9,19 @@ import fetchData from '../../API/fetchData'
 import { Flex, Box, Button, IconButton, NumberInput, NumberInputField, Text, Textarea, Portal } from '@chakra-ui/react'
 import { motion, AnimatePresence } from 'framer-motion'
 //FLOWS
-import ReactFlow, { Controls, Background, useNodesState, useEdgesState, ControlButton, SelectionMode } from 'reactflow'
+import ReactFlow, { Controls, Background, useNodesState, useEdgesState, ControlButton, SelectionMode, Edge } from 'reactflow'
 import 'reactflow/dist/style.css'
 import { FirstNode } from './CustomNodes'
 import { AddNode } from './CustomNodes'
 import { BrancherNode } from './CustomNodes'
 import { ExtactorNode } from './CustomNodes'
+import { TransferNode } from './CustomNodes'
+import { ResetNode } from './CustomNodes'
+import { FlowSwapNode } from './CustomNodes'
+import { FunctionNode } from './CustomNodes'
+import { MotherStructureUpdateNode } from './CustomNodes'
 import { SenderNode } from './CustomNodes'
+import { TerminatorNode } from './CustomNodes'
 import { CustomEdge } from './CustomNodes'
 //COMPONENTS
 import EditText from '../../Components/EditText.js'
@@ -35,7 +41,13 @@ const nodeTypes = {
     add:AddNode,
     brancher:BrancherNode,
     extractor:ExtactorNode,
-    sender: SenderNode
+    sender: SenderNode,
+    terminator:TerminatorNode,
+    transfer: TransferNode,
+    reset: ResetNode,
+    flow_swap:FlowSwapNode,
+    function: FunctionNode,
+    motherstructure_updates: MotherStructureUpdateNode
 }
 const edgeTypes = { custom: CustomEdge }
 
@@ -63,6 +75,41 @@ const Flow = () => {
     const [edges, setEdges, onEdgesChange] = useEdgesState([])
     const [flowName, setFlowName] = useState<string>(t('NewFlow'))    
 
+    //PARSE NODES STRUCTURE TO SEND TO THE BACK
+    const parseDataToBack = () => {
+        const finalNodes = nodes.map(node => {
+            const { functions, ...noFunctionsData } = node.data
+                return {type: node.type, ...noFunctionsData}
+        })
+        return finalNodes
+    }
+
+    //PARSE BACK DATA TO NODES STRUCTURE
+    const parseNodesFromBack = (nodesBack: Array<{ type: nodeTypesDefinition; [key: string]: any }>) => {
+
+        const getNodeFunctions = (type:nodeTypesDefinition) => {
+            switch (type) {
+                case 'brancher': return  {setShowNodesAction, editBranch, addNewNode, deleteNode}
+                case 'extractor': return {setShowNodesAction, editBranch, editExtractor, addNewNode, deleteNode}
+                case 'sender': return {setShowNodesAction, editMessage, addNewNode, deleteNode}
+                case 'terminator': return {setShowNodesAction, editMessage, deleteNode}
+                case 'transfer': return {setShowNodesAction, editMessage, editSimpleFlowData, deleteNode}
+                case 'reset': return {setShowNodesAction, editMessage, deleteNode}
+                case'flow_swap': return {flowsIds:[], setShowNodesAction, editMessage, addNewNode, deleteNode}
+                case 'function': return {setShowNodesAction, editMessage, addNewNode, deleteNode}
+                case 'motherstructure_updates': return {setShowNodesAction, editMessage, addNewNode, deleteNode}
+
+                default:{}
+            }
+        }
+        const nodes = nodesBack.map(node => {
+            const { type, ...datosVariables } = node
+            const data = {...datosVariables, functions: getNodeFunctions(type)}
+            return {type, data}
+        })
+        return nodes
+    }
+
     //EDIT THE CHANNELS OF THE FLOW
     const setChannels = (channels:Channels[]) => {
         setNodes((nds) =>
@@ -78,7 +125,6 @@ const Flow = () => {
     const addNewNode = (sourceData:{sourceId:string, sourceType:nodeTypesDefinition, branchIndex?:number}, targetType:nodeTypesDefinition) => {
    
         const getNewNodeId = (id:string, nds:{id:string, position:{x:number, y:number}, data:any}[]) => {
-            let newNodeId:string
             const newNodeX = parseInt(id.split('-')[0]) + 1
             const matchingNodes = nds.filter(node => node.id.startsWith(`${newNodeX}-`))
 
@@ -88,7 +134,7 @@ const Flow = () => {
                 while (occupiedRows.has(firstAvailableRow)) {firstAvailableRow++}
                 return `${newNodeX}-${firstAvailableRow}-${nds.length}`;
             } 
-            else return newNodeId = `${newNodeX}-0-${nds.length}`
+            else return `${newNodeX}-0-${nds.length}`
         }
 
         const getNewNodeObject = (id:string, type:nodeTypesDefinition, nds:any) => {
@@ -107,11 +153,18 @@ const Flow = () => {
         
             const position = { x, y }
             
-            let newNodeObject:any
-            if (type === 'brancher') return {id, position, data:{branches:[{name:'',conditions:[], next_node_index:null}], setShowNodesAction, editBranch, addNewNode, deleteNode}, type:targetType}
-            else if (type === 'extractor') return {id, position, data:{branches:[], variables:[], setShowNodesAction, editBranch, editExtractor, addNewNode, deleteNode}, type:targetType}
-            else if (type === 'sender') return {id, position, data:{next_node_index:null, messages:[{type:'generative', generation_instructinos:'', preespecified_messages:{}}], setShowNodesAction, editMessage, addNewNode, deleteNode}, type:targetType}
-            else return  {id, position, data:newNodeObject}
+            let newNodeObjectData = {}
+            if (type === 'brancher') newNodeObjectData = {branches:[{name:'',conditions:[], next_node_index:null}], functions:{setShowNodesAction, editBranch, addNewNode, deleteNode}}
+            else if (type === 'extractor') newNodeObjectData = {branches:[], variables:[], functions:{setShowNodesAction, editBranch, editExtractor, addNewNode, deleteNode}}
+            else if (type === 'sender') newNodeObjectData =  {next_node_index:null, messages:[{type:'generative', generation_instructions:'', preespecified_messages:{}}], functions:{setShowNodesAction, editMessage, addNewNode, deleteNode}}
+            else if (type === 'terminator') newNodeObjectData = {flow_result:'', messages:[{type:'generative', generation_instructions:'', preespecified_messages:{}}], functions:{setShowNodesAction, editMessage, deleteNode}}
+            else if (type === 'transfer') newNodeObjectData = {user_id:0, group_id:0, messages:[{type:'generative', generation_instructions:'', preespecified_messages:{}}], functions:{setShowNodesAction, editMessage, editSimpleFlowData, deleteNode}}
+            else if (type === 'reset') newNodeObjectData = {messages:[{type:'generative', generation_instructions:'', preespecified_messages:{}}], functions:{setShowNodesAction, editMessage, deleteNode}}
+            else if (type === 'flow_swap') newNodeObjectData = {new_flow_uuid:'-1', messages:[{type:'generative', generation_instructions:'', preespecified_messages:{}}], functions:{flowsIds:[], setShowNodesAction, editMessage, addNewNode, deleteNode}}
+            else if (type === 'function') newNodeObjectData = {functions:{setShowNodesAction, editMessage, addNewNode, deleteNode}}
+            else if (type === 'motherstructure_updates') newNodeObjectData = {functions:{setShowNodesAction, editMessage, addNewNode, deleteNode}}
+
+            return {id, position, data: newNodeObjectData, type:targetType}
         }
 
         if (sourceData.sourceType === 'add') {
@@ -242,7 +295,6 @@ const Flow = () => {
              }
     )}
     
-
     //ADD OR DELETE BRANCHES
     const editBranch = (nodeId:string | undefined, index:number | undefined, type:'remove'| 'remove-branch' | 'add' | 'edit', newBranch?:Branch) => {
         setNodes((nds) => nds.map((node) => {
@@ -294,7 +346,7 @@ const Flow = () => {
     }
   
     //ADD OR DELETE A MESSAGE IN SENDER
-    const editMessage = (nodeId:string | undefined, index:number | undefined, type:'remove' | 'add' | 'edit', newMessage?:FlowMessage ) => {
+    const editMessage = (nodeId:string | undefined, index:number | undefined, type:'remove' | 'add' | 'edit', newMessage?:FlowMessage) => {
         setNodes((nds) => nds.map((node) => {
             if (node.id !== nodeId) return node
             let updatedMessages
@@ -309,6 +361,45 @@ const Flow = () => {
             return {...node, data: { ...node.data, messages: updatedMessages}}
         })
       ) 
+    }
+
+    //EDIT SIMPLE FLOW DATA
+    const editSimpleFlowData = (nodeId:string | undefined, keyToEdit:string, newData:number | string ) => {
+        setNodes((nds) => nds.map((node) => {
+            if (node.id !== nodeId) return node
+            return {...node, data: { ...node.data, [keyToEdit]: newData}}
+        }))
+    }
+
+
+    const findLastExtractor = (nodeId:string) => {
+
+        let lastExtractorVariables: number[] = []
+
+        function findPreviousNode(nodeId: string, nodes: any[], edges: Edge[]): string | null {
+            const edge = edges.find(e => e.id.split('->')[1] === nodeId);
+            if (!edge) return null
+            const sourceNodeId = edge.id.split('->')[0]
+            const sourceNode = nodes.find(n => n.id === sourceNodeId)
+            if (!sourceNode) return null
+            if (sourceNode.type === 'function') return findPreviousNode(sourceNodeId, nodes, edges)
+            return sourceNodeId
+        }
+        
+        setEdges((edges) => {
+            setNodes((nodes) => {
+                const previousNodeId = findPreviousNode(nodeId, nodes, edges);
+                if (previousNodeId) {
+                    const extractorNode = nodes.find(n => n.id === previousNodeId)
+                    lastExtractorVariables = extractorNode?.data?.variables
+                }
+                
+                return nodes
+            })
+            return edges
+        })
+        
+        return lastExtractorVariables
     }
     
     //FETCH INITIAL DATA
@@ -441,10 +532,8 @@ const Flow = () => {
             }
             case 'message': {
 
-
                 const [messageData, setMessageData] = useState<FlowMessage>(node?.data.messages[showNodesAction?.actionData.index])
 
- 
                 //PLACE LANGUAGES FLAG LOGIC
                 const buttonRef = useRef<HTMLButtonElement>(null)
                 const boxRef = useRef<HTMLDivElement>(null)
@@ -525,6 +614,19 @@ const Flow = () => {
                     </Box>}
                 </Box>)
             }
+
+            case 'flow_result':
+                const [flowResult, setFlowResult] = useState<string>(node?.data.flow_result)
+                useEffect(()=> {
+                    editSimpleFlowData(showNodesAction?.nodeId, 'flow_result', flowResult)
+                },[flowResult])
+
+                return(
+                <Box ref={scrollRef} overflow={'scroll'}>
+                    <Text mb='1vh'color='gray.600' fontSize={'.8em'} fontWeight={'medium'}>{t('FlowResult')}</Text>
+                    <Textarea mt='5px'  maxLength={2000} height={'auto'} placeholder={`${t('FlowResultPlaceholder')}...`} maxH='300px' value={flowResult} onChange={(e) => setFlowResult(e.target.value)} p='8px'  borderRadius='.5rem' fontSize={'.9em'}  _hover={{border: "1px solid #CBD5E0" }} _focus={{p:'7px',borderColor: "rgb(77, 144, 254)", borderWidth: "2px"}}/>
+                </Box>
+                )
 
             default: return <></>
         }
