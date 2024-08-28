@@ -55,7 +55,7 @@ function FlowsTable () {
         document.title = `${t('Flows')} - ${auth.authData.organizationName} - Matil`
         localStorage.setItem('currentSection', `flows`)
 
-        const fetchClientsData = async() => {
+        const fetchFlowsData = async() => {
             if (session.sessionData.flowsTable) {
                 setFlows(session.sessionData.flowsTable.data)
                 setFilters(session.sessionData.flowsTable.filters)
@@ -78,7 +78,7 @@ function FlowsTable () {
                 })
             }
         }    
-        fetchClientsData()
+        fetchFlowsData()
     }, [])
 
 

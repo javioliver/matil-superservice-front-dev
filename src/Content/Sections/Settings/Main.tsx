@@ -38,10 +38,10 @@ function Main ({subSections, sectionsList}:MainProps) {
 
     //COMPONENT FOR EACH BOX SECTION
     const SectionBox = ({section, subSections}:SectionBoxProps) => {
-        const sectionsMap: SectionsListProps = {'organization':t('Organization'),'user':t('Personal'), 'rules':t('Rules'), 'channels': t('Channels'), 'integrations':t('Integrations'),'main':t('Main')}
-        const iconsMap: Record<IconKey, IconType> = {organization: BiSolidBuildings, user: IoPeopleSharp, rules:FaDiagramProject, channels: HiChatAlt2, integrations:FaPlug, main:FaDoorOpen}
+        const sectionsMap: SectionsListProps = {'organization':t('Organization'),'user':t('Personal'), 'rules-fields':t('Rules'), 'channels': t('Channels'), 'integrations':t('Integrations'),'main':t('Main')}
+        const iconsMap: Record<IconKey, IconType> = {organization: BiSolidBuildings, user: IoPeopleSharp, 'rules-fields':FaDiagramProject, channels: HiChatAlt2, integrations:FaPlug, main:FaDoorOpen}
 
-        const sectionsExplanationMap: SectionsListProps = {'organization':t('Organization_Exp'),'user':t('Personal_Exp'), 'rules':t('Rules_Exp'),'channels': t('Channels_Exp'),'integrations':t('Integrations_Exp'), 'main':t('Main')}
+        const sectionsExplanationMap: SectionsListProps = {'organization':t('Organization_Exp'),'user':t('Personal_Exp'), 'rules-fields':t('Rules_Exp'),'channels': t('Channels_Exp'),'integrations':t('Integrations_Exp'), 'main':t('Main')}
       
         const navigate = useNavigate()
 

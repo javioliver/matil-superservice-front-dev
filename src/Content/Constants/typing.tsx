@@ -332,7 +332,7 @@ export const contactDicRegex:{[key in ContactChannel]:[string, RegExp, number, C
   }
 
 //SETTINGS
-export type IconKey = 'organization' | 'user' | 'rules' | 'channels' | 'integrations' | 'main'
+export type IconKey = 'organization' | 'user' | 'rules-fields' | 'channels' | 'integrations' | 'main'
 export type SubSectionProps = string[][]
 export type SectionsListProps = {[key in IconKey]: string}
 
@@ -353,4 +353,4 @@ export interface configProps {
 }
 
 //CONDITIONS TYPES
-export type DataTypes = 'bool' | 'int' | 'float' | 'str' | 'timestamp' | 'list' | 'json'
+export type DataTypes = 'bool' | 'int' | 'float' | 'str' | 'timestamp' | 'list'

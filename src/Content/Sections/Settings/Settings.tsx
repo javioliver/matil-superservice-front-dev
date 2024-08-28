@@ -35,11 +35,10 @@ const ViewsList = lazy(() => import('./User/Views'))
 const EditView = lazy(() => import('./User/EditView'))
 const Shortcuts = lazy(() => import('./User/Shortcuts'))
 //RULES
-//const TicketsFields = lazy(() => import('./Organization/TicketsFields'))
-//const ClientsFields = lazy(() => import('./Organization/ClientsFields'))
-//const BusinessesFields = lazy(() => import('./Organization/TicketsFields'))
+const Fields = lazy(() => import('./Rules/Fields'))
 //const Triggers = lazy(() => import('./Organization/Triggers'))
 //const Automatizations = lazy(() => import('./Organization/Automatizations'))
+//const Functions = lazy(() => import('./Organization/Functions'))
 //CHANNELS
 const Chatbot = lazy(() => import('./Channels/Chatbot'))
 const Google = lazy(() => import('./Channels/Google'))
@@ -65,8 +64,8 @@ const Section = ({ section, subSections }: ExpandableSectionProps) => {
     const navigate = useNavigate()
     const selectedSection = useLocation().pathname.split('/')[2]
     const selectedSubSection = useLocation().pathname.split('/')[3]
-    const sectionsList: SectionsListProps = {'organization':t('Organization'),'user':t('Personal'), 'rules':t('Rules'), 'channels': t('Channels'), 'integrations':t('Integrations'),'main':t('Main')}
-    const iconsMap: Record<IconKey, IconType> = {organization: BiSolidBuildings, user: IoPeopleSharp, rules:FaDiagramProject, channels: HiChatAlt2, integrations:FaPlug, main:FaDoorOpen}
+    const sectionsList: SectionsListProps = {'organization':t('Organization'),'user':t('Personal'), 'rules-fields':t('Rules'), 'channels': t('Channels'), 'integrations':t('Integrations'),'main':t('Main')}
+    const iconsMap: Record<IconKey, IconType> = {organization: BiSolidBuildings, user: IoPeopleSharp, 'rules-fields':FaDiagramProject, channels: HiChatAlt2, integrations:FaPlug, main:FaDoorOpen}
 
     //NAVIGATE
     const navigateToSection = (section:string) => {
@@ -105,13 +104,13 @@ function Settings () {
     const subSections: SubSectionProps[] = [
         [[t('Data'), 'data'], [t('Payments'), 'payments'], [t('Tickets'), 'tickets'], [t('Personal'),'admin-users'], [t('Groups'),'groups']],
         [[t('User'), 'user'],[t('Views'), 'edit-views'], [t('Shortcuts'), 'shortcuts']],
-        [[t('TicketsFields'), 'tickets-fields'], [t('ClientsFields'), 'clients-fields'],[t('BusinessesFields'), 'businesses-fields'],[t('Triggers'), 'triggers'], [t('Automatizations'), 'automatizations']],
+        [[t('Fields'), 'fields'], [t('Triggers'), 'triggers'], [t('Automatizations'), 'automatizations'], [t('Functions'), 'functions']],
         [[t('Web'),'web'], ['Whatsapp','whatsapp'], [t('Phone'),'phone'], ['Instagram','instagram'], ['Google Business','google-business'], [t('Mail'),'mail']],
         [['Shopify','shopify']]
 
     ] 
     
-    const sectionsList: (IconKey | '')[] = isAdmin ? ['organization', 'user', 'rules', 'channels', 'integrations'] : ['', 'user', '']
+    const sectionsList: (IconKey | '')[] = isAdmin ? ['organization', 'user', 'rules-fields', 'channels', 'integrations'] : ['', 'user', '']
 
     //CONSTANTS
     const navigate = useNavigate()
@@ -155,6 +154,8 @@ function Settings () {
                         <Route path="/user/edit-views" element={<ViewsList />} />
                         <Route path="/user/edit-views/edit/*" element={<EditView scrollRef={scrollRef}/>} />
                         <Route path="/user/shortcuts" element={<Shortcuts/>} />
+
+                        <Route path="/rules-fields/fields" element={<Fields/>} />
 
                         <Route path="/channels/web" element={<Chatbot />} />
                         <Route path="/channels/whatsapp" element={<Whatsapp />} />

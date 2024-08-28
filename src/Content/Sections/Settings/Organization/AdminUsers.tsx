@@ -9,14 +9,13 @@ import { Flex, Text, Box, IconButton, Tooltip, Button, Checkbox, Skeleton } from
 //COMPONENTS
 import EditText from '../../../Components/EditText'
 import LoadingIconButton from '../../../Components/LoadingIconButton'
-import ConfirmmBox from '../../../Components/ConfirmBox'
+import ConfirmBox from '../../../Components/ConfirmBox'
 //ICONS
 import { BsClipboard2Check, BsTrash3Fill } from "react-icons/bs"
 import { FaPlus } from 'react-icons/fa6'
 //FUNCTIONS
 import copyToClipboard from '../../../Functions/copyTextToClipboard'
 
-import { Views } from '../../../Constants/typing'
 
 //TYPING
 interface UserData  {
@@ -139,13 +138,13 @@ function AdminUsers () {
     }
 
     const memoizedNewUserBox = useMemo(() => (
-        <ConfirmmBox setShowBox={setShowCreateNewUser} isSectionWithoutHeader={true}> 
+        <ConfirmBox setShowBox={setShowCreateNewUser} isSectionWithoutHeader={true}> 
             <NewUserBox userData={userData} setUserData={setUserData} setShowCreateNewUser={setShowCreateNewUser}/>
-        </ConfirmmBox>
+        </ConfirmBox>
     ), [showCreateNewUser])
 
     const memoizedDeleteBox = useMemo(() => (
-        <ConfirmmBox setShowBox={setShowConfirmDelete} isSectionWithoutHeader={true}> 
+        <ConfirmBox setShowBox={setShowConfirmDelete} isSectionWithoutHeader={true}> 
               <Box p='15px'> 
                 <Text width={'400px'}  fontWeight={'medium'}>¿Estás seguro que deseas eliminar al siguiente usuario de la organización?</Text>
                 <Box maxH='30vh' overflow={'scroll'} mt='2vh'>
@@ -161,7 +160,7 @@ function AdminUsers () {
                     <Button  size='sm' color='red' _hover={{color:'red.600', bg:'gray.200'}} onClick={handleDeleteUsers}>{waitingDelete?<LoadingIconButton/>:'Eliminar'}</Button>
                     <Button  size='sm' onClick={()=>setShowConfirmDelete(false)}>Cancelar</Button>
                 </Flex>
-            </ConfirmmBox>
+            </ConfirmBox>
     ), [showConfirmDelete])
 
     return(<>

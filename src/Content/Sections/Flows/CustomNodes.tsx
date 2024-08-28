@@ -21,6 +21,9 @@ import { FaCodeBranch, FaDatabase, FaPlus, FaTicket, FaUserCheck, FaCode, FaArro
 //TYPING
 import { languagesFlags, logosMap, Channels, actionTypesDefinition, nodeTypesDefinition, Branch, FlowMessage, DataTypes } from '../../Constants/typing.js'
  
+type VariableType = {name:string, type:DataTypes, description:string, examples:any[], values:any[], ask_for_confirmation:boolean}
+
+
 //FIRST NODE DATA
 interface TriggerNodeData {
   channels:Channels[]
@@ -38,9 +41,10 @@ interface BrancherNodeData {
 }
 //EXTRACTOR NODE DATA
 interface ExtractorNodeData {
-  variables:{index:number, message:FlowMessage}[]
+  variables:{index:number, message:FlowMessage, require_confirmation:boolean, confirmation_message:FlowMessage}[]
   branches:Branch[]
   functions: {
+    flowVariables:VariableType[]
     setShowNodesAction:Dispatch<SetStateAction<null | {nodeId:string, actionType:actionTypesDefinition, actionData:any}>>
     editBranch:(nodeId:string | undefined, index:number | undefined, type:'remove' | 'add' | 'remove-branch') => void
     editExtractor:(nodeId:string | undefined, index:number | undefined, type:'remove' | 'add') => void
@@ -209,7 +213,7 @@ export const BrancherNode = ({id, data}:{id:string, data:BrancherNodeData}) => {
   return (<> 
       <Box cursor={'default'} bg="gray.50" borderRadius={'.5rem'} borderColor='gray.300' borderWidth={'1px'} width='250px'>
           <NodeHeader nodeId={id} nodeType='brancher' isExpanded={isExpanded} setIsExpanded={setIsExpanded} deleteNode={data.functions.deleteNode}/>
-          <Box p='15px'> 
+          <Box p='0 15px 15px 15px'> 
             {isExpanded && <BranchesComponent id={id} branches={data.branches }isExpanded={isExpanded} editBranch={data.functions.editBranch} setShowNodesAction={data.functions.setShowNodesAction} addNewNode={data.functions.addNewNode}/>}
           </Box>
       </Box>
@@ -228,9 +232,6 @@ export const ExtactorNode = ({id, data}:{id:string, data:ExtractorNodeData}) => 
 
   //TRANSLATION
   const { t } = useTranslation('flows')
-  
-  //VARIABLES TYPES LIST
-  const variableTypeList:DataTypes[] = ['bool', 'int', 'float', 'str', 'timestamp', 'list', 'json']
 
   const EditorComponent = ({variable, index}:{variable:{index:number, message:FlowMessage}, index:number}) => {
 
@@ -239,7 +240,7 @@ export const ExtactorNode = ({id, data}:{id:string, data:ExtractorNodeData}) => 
     return(
       <Box position='relative' onMouseEnter={() => setIsHovering(true)} onMouseLeave={() => setIsHovering(false)}> 
         <Box cursor={'pointer'}  mt='15px' boxShadow={'0 0 5px 1px rgba(0, 0, 0, 0.15)'}p='10px' borderRadius={'.3rem'} borderTopColor={'#4A5568'} borderTopWidth='3px' key={`variable-${index}`} onClick={() => data.functions.setShowNodesAction({nodeId:id, actionType:'extract', actionData:{index}})}>
-          <Text fontSize='.7em' fontWeight={'medium'}>{t(variableTypeList[variable.index])}</Text>
+          <Text fontSize='.7em' fontWeight={'medium'}>{t(data.functions.flowVariables.length === 0?t('NoVariable'):data.functions.flowVariables[variable.index].type)}</Text>
           <Text fontSize='.5em'  style={{overflow: 'hidden',display: '-webkit-box',WebkitLineClamp: 3, WebkitBoxOrient: 'vertical'}} ><span style={{fontWeight:500, color:'#4A5568'}}> {t('Instructions')}:</span> {variable.message.generation_instructions}</Text>
         </Box>
         {(isHovering) && 
@@ -422,7 +423,7 @@ export const FlowSwapNode = ({id, data}:{id:string, data:FlowSwapData}) => {
 
   //TRANSLATION
   const { t } = useTranslation('flows')
-
+ 
   //BOOLEAN FOR TOGGING THE NODE VISIBILITY
   const [isExpanded, setIsExpanded] = useState<boolean>(true)
 
@@ -551,6 +552,7 @@ const NodeHeader = ({nodeId, nodeType, isExpanded, setIsExpanded, deleteNode, ad
 
   let disabledNodes:number[]
   if (nodeType === 'brancher' || nodeType === 'sender' || nodeType === 'reset' || nodeType === 'motherstructure_updates') disabledNodes = [8]
+ 
   //TRANSLATION
   const { t } = useTranslation('flows')
 
@@ -574,6 +576,8 @@ const NodeHeader = ({nodeId, nodeType, isExpanded, setIsExpanded, deleteNode, ad
   }, [isExpanded, nodeId])
 
   
+ 
+
   return (<> 
       <Flex position={'relative'} p='15px' alignItems={'center'} color='gray.600' justifyContent={'space-between'} onMouseEnter={() => setIsHovering(true)} onMouseLeave={() => setIsHovering(false)}> 
         
@@ -644,12 +648,12 @@ const BranchesComponent = ({id, branches, isExpanded, setShowNodesAction, editBr
       <Flex position={'relative'} alignItems={'center'} display={'inline-flex'}  > 
         <Box position='relative' onMouseEnter={() => setIsHoveringCondition(true)} onMouseLeave={() => setIsHoveringCondition(false)} > 
           <Flex  borderColor={branch.conditions.length === 0?'red':''} borderWidth={'1px'} zIndex={1} position={'relative'} bg='white'  display={'inline-flex'}   boxShadow={'0 0 5px 1px rgba(0, 0, 0, 0.15)'} borderRadius={'.3rem'} onClick={() => setShowNodesAction({nodeId:id, actionType:'condition', actionData:{index}})} p='4px'>  
-              <Text fontSize={'.7em'}>{branch.name?branch.name: `${t('Branch')} ${index}`}</Text>
+              <Text fontSize={'.7em'} noOfLines={1} textOverflow={'ellipsis'} >{branch.name?branch.name: `${t('Branch')} ${index}`}</Text>
           </Flex>
-          {isHoveringCondition && 
-            <Flex alignItems={'center'} position={'absolute'} borderRadius={'full'} p='3px' top={'-7px'} zIndex={100} bg='white' boxShadow={'0 0 5px 1px rgba(0, 0, 0, 0.15)'} right={'-7px'} justifyContent={'center'} cursor={'pointer'} onClick={() => editBranch(id, index, 'remove')}>
-              <Icon boxSize={'10px'} as={BsTrash3Fill} color='red'/>
-            </Flex>}
+        {(isHoveringCondition) && 
+          <Flex alignItems={'center'} position={'absolute'} borderRadius={'full'} p='3px' top={'-7px'} zIndex={100} bg='white' boxShadow={'0 0 5px 1px rgba(0, 0, 0, 0.15)'} right={'-7px'} justifyContent={'center'} cursor={'pointer'} onClick={() => editBranch(id, index, 'remove')}>
+            <Icon boxSize={'10px'} as={BsTrash3Fill} color='red'/>
+          </Flex>}
         </Box>
         {branch.next_node_index === null && <Flex cursor={'pointer'} ref={buttonRef} onClick={() => setSelectedBranchIndex(index)} position={'absolute'} left='100%' ml='5px' zIndex={100} bg='white' display={'inline-flex'} p='4px' alignItems={'center'} justifyContent={'center'}  boxShadow={'0 0 5px 1px rgba(0, 0, 0, 0.15)'}  borderRadius={'50%'}>
           <Icon as={IoArrowRedo} color='red' boxSize={'10px'}/>
@@ -673,7 +677,7 @@ const BranchesComponent = ({id, branches, isExpanded, setShowNodesAction, editBr
   }
 
   return(<> 
-    <Flex gap='15px' alignItems={'center'} mt='15px'  > 
+    <Flex gap='15px' alignItems={'center'}  > 
       <Flex justifyContent={'center'} bg='yellow.400' alignItems={'center'} p='7px' borderRadius={'.5rem'}> 
         <Icon color='white' boxSize={'15px'} as={FaCodeBranch} transform={'rotate(90deg)'}/>
       </Flex>

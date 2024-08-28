@@ -44,6 +44,7 @@
             let inputValue = typeof(event) === 'string'?event: event.target.value
             inputValue = DOMPurify.sanitize(inputValue)
             if (maxLength && inputValue.length > maxLength) {inputValue = inputValue.substring(0, maxLength)}
+         
             setValue(inputValue)
         }
 
