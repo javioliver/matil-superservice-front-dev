@@ -15,6 +15,22 @@
     "Views":"Vistas",
     "Shortcuts":"Atajos",
     "Functions":"Funciones",
+    "FunctionsDes":"Simplifica tareas repetitivas integrando funciones personalizadas de Python.",
+    "CreateFunction":"Crear función",
+    "Description":"Descripción",
+    "DescriptionPlaceholder":"Introduzca una descripción",
+    "Id":"ID",
+    "Code":"Código",
+    "Actions":"Acciones",
+    "CorrectAddedFunction":"Función añadida con éxito",
+    "FailedAddedFunction":"Hubo un error al añadir la función",
+    "CorrectEditedFunction":"Función editada con éxito",
+    "FailedEditedFunction":"Hubo un error al editar la función",
+    "CorrectDeletedFunctions":"Función eliminada con éxito",
+    "FailedDeletedFunctions":"Hubo un error al eliminar la función",
+
+
+
     "Rules":"Campos y Reglas",
     "Rules_Exp":"Aumenta tu eficiencia definiendo campos, disparadores y automatizaciones.",
     "Fields":"Campos",

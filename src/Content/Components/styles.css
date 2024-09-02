@@ -1480,3 +1480,11 @@ text-decoration: underline;
 .slide-out {
   animation: slideOutRight 0.15s forwards;
 }
+
+
+/*CODE EDITOR*/
+
+.cm-theme {
+  height: 100%;
+  border-radius: .5rem;
+}

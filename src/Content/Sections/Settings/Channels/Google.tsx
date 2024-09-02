@@ -94,7 +94,7 @@ function Google () {
                 <SaveData data={data} setData={setData} dataRef={dataRef} channel={'instagram'} />
 
         <Skeleton isLoaded={dataRef.current !== null && data !== null}> 
-                {data.length === 0 ? <Text mt='3vh'>{auth.authData.organizationName} no tiene cuentas activas de Google Business</Text>:
+            {data.length === 0 ? <Text mt='3vh'>{auth.authData.organizationName} no tiene cuentas activas de Google Business</Text>:
                 <> 
                 {data.map((bot, index) => (
                 <Box bg='white' p='1vw' key={`whatsapp-channel-${index}`} borderRadius={'.7rem'} mt={index === 0?'':'8vh'} boxShadow={'0 0 10px 1px rgba(0, 0, 0, 0.1)'} > 

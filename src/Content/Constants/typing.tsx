@@ -274,7 +274,7 @@ export const columnsFlowsMap: ColumnsMap = {
     updated_at: 150
  }
 export type nodeTypesDefinition = 'add' | 'extractor' | 'brancher' | 'sender' | 'function' | 'terminator' | 'transfer' | 'reset' | 'flow_swap' | 'motherstructure_updates'
-export type actionTypesDefinition = 'message' | 'condition' | 'extract' | 'flow_result'
+export type actionTypesDefinition = 'message' | 'condition' | 'extract' | 'flow_result' | 'edit_fields' | 'function'
 export type Branch = {
     name:string, 
     conditions:{variable_index:number, op:string, value:any}[],
@@ -284,6 +284,24 @@ export type FlowMessage = {
     type:'generative' | 'preespecified',
     generation_instructions:string,
     preespecified_messages:{[key: string]:string}
+}
+
+export type FieldAction = {
+    motherstructure:'ticket' | 'client' | 'contact_business'
+    is_customizable:boolean
+    name:string
+    op:string
+    value:any
+}
+
+export type FunctionType = {
+    uuid:string
+    variable_args:{[key:string]:number}
+    motherstructure_args:{[key:string]:{motherstructure:'ticket' | 'client' | 'contact_business',is_customizable:boolean, name:string }}
+    hardcoded_args:{[key:string]:string}
+    error_nodes_ids:{[key:number]:number}
+    next_node_index:string | null
+    output_to_variables:{[key:string]:number}
 }
 
 //MESSAGES

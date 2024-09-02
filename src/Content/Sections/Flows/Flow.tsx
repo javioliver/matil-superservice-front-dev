@@ -26,18 +26,20 @@ import { CustomEdge } from './CustomNodes'
 //COMPONENTS
 import EditText from '../../Components/EditText.js'
 import CustomSelect from '../../Components/CustomSelect.js'
+import LoadingIconButton from '../../Components/LoadingIconButton.js'
 //FUNCTIONS
 import useOutsideClick from '../../Functions/clickOutside.js'
 import determineBoxStyle from '../../Functions/determineBoxStyle.js'
 //ICONS
 import { RxCross2 } from 'react-icons/rx'
-import { FaPlus } from 'react-icons/fa'
+import { FaPlus, FaBuilding } from 'react-icons/fa'
 import { IoIosArrowDown } from 'react-icons/io'
 import { BsTrash3Fill } from 'react-icons/bs'
 //TYPING
-import { languagesFlags, Channels, actionTypesDefinition, nodeTypesDefinition, DataTypes, Branch, FlowMessage } from '../../Constants/typing.js'
+import { languagesFlags, Channels, actionTypesDefinition, nodeTypesDefinition, DataTypes, Branch, FlowMessage, FieldAction, ContactBusinessesTable, FunctionType } from '../../Constants/typing.js'
 import ConfirmBox from '../../Components/ConfirmBox.js'
 
+//FLOWS AND NODES DEFINITIONS
 const panOnDrag = [1, 2]
 const nodeTypes = {
     trigger: FirstNode,
@@ -54,11 +56,13 @@ const nodeTypes = {
 }
 const edgeTypes = { custom: CustomEdge }
 
+//VARIABLE TYPES
 type VariableType = {name:string, type:DataTypes, description:string, examples:any[], values:any[], ask_for_confirmation:boolean}
 
- //MOTION BOX
- const MotionBox = motion(Box)
+//MOTION BOX
+const MotionBox = motion(Box)
 
+//MAIN FUNCTION
 const Flow = () => {
 
     //TRANSLATION
@@ -76,6 +80,9 @@ const Flow = () => {
     const flowBoxRef = useRef<HTMLDivElement>(null)
     const nameInputRef = useRef<HTMLDivElement>(null)
 
+    //BOOLEAN FOR WAIT THE CHARGE
+    const [waiting, setWaiting] = useState<boolean>(true)
+
     //SHOW NODES EDITOR
     const [showNodesAction, setShowNodesAction] = useState<null | {nodeId:string, actionType:actionTypesDefinition, actionData:any}>(null)
 
@@ -92,6 +99,10 @@ const Flow = () => {
     const flowVariablesRef = useRef<VariableType[]>([])
     useEffect(() => {flowVariablesRef.current = flowVariables},[flowVariables])
     const [flowInterpreterConfig, setFlowInterpreterConfig] = useState<{data_extraction_model: 'simple' | 'comprehensive', response_classification_model:'none' | 'simple' | 'comprehensive'}>({data_extraction_model:'comprehensive', response_classification_model:'comprehensive'})    
+    const [flowsFunctions, setFlowFunctions] = useState<string[]>([])
+    const functionsNameMap = useRef<{[key:string]:string}>({})
+    const functionsArgsMap = useRef<{[key:string]:string[]}>({})
+    const functionsOutputsMap = useRef<{[key:string]:string[]}>({})
 
     //PARSE NODES STRUCTURE TO SEND TO THE BACK
     const parseDataToBack = (nodes:{id:string, type?: string, data?:any}[]) => {
@@ -120,8 +131,8 @@ const Flow = () => {
                     case 'transfer': return {setShowNodesAction, editMessage, editSimpleFlowData, deleteNode}
                     case 'reset': return {setShowNodesAction, editMessage, deleteNode}
                     case 'flow_swap': return {flowsIds:[], setShowNodesAction, editMessage, addNewNode, deleteNode}
-                    case 'function': return {setShowNodesAction, editMessage, addNewNode, deleteNode}
-                    case 'motherstructure_updates': return {setShowNodesAction, editMessage, addNewNode, deleteNode}
+                    case 'function': return {functionsDict:functionsNameMap.current, setShowNodesAction, editMessage, addNewNode, deleteNode}
+                    case 'motherstructure_updates': return {setShowNodesAction, editFieldAction, addNewNode, deleteNode}
 
                     default:{}
                 }
@@ -185,8 +196,8 @@ const Flow = () => {
             else if (type === 'transfer') newNodeObjectData = {user_id:0, group_id:0, messages:[{type:'generative', generation_instructions:'', preespecified_messages:{}}], functions:{setShowNodesAction, editMessage, editSimpleFlowData, deleteNode}}
             else if (type === 'reset') newNodeObjectData = {messages:[{type:'generative', generation_instructions:'', preespecified_messages:{}}], functions:{setShowNodesAction, editMessage, deleteNode}}
             else if (type === 'flow_swap') newNodeObjectData = {new_flow_uuid:'-1', messages:[{type:'generative', generation_instructions:'', preespecified_messages:{}}], functions:{flowsIds:[], setShowNodesAction, editMessage, addNewNode, deleteNode}}
-            else if (type === 'function') newNodeObjectData = {functions:{setShowNodesAction, editMessage, addNewNode, deleteNode}}
-            else if (type === 'motherstructure_updates') newNodeObjectData = {functions:{setShowNodesAction, editMessage, addNewNode, deleteNode}}
+            else if (type === 'function') newNodeObjectData = {uuid:'', variable_args:{}, motherstructure_args:{}, hardcoded_args:{}, error_nodes_ids:{}, success_node_id:null, output_to_variables:{}, functions:{functionsDict:functionsNameMap.current,setShowNodesAction, editMessage, addNewNode, deleteNode}}
+            else if (type === 'motherstructure_updates') newNodeObjectData = {updates:[], next_node_index:null, functions:{setShowNodesAction, editFieldAction, addNewNode, deleteNode}}
 
             return {id, position, data: newNodeObjectData, type:targetType}
         }
@@ -405,11 +416,36 @@ const Flow = () => {
       ) 
     }
 
+    //ADD OR DELETE A MESSAGE IN SENDER
+    const editFieldAction = (nodeId:string | undefined, index:number | undefined, type:'remove' | 'add' | 'edit', newAction?:FieldAction) => {
+        setNodes((nds) => nds.map((node) => {
+            if (node.id !== nodeId) return node
+            let updatedActions
+            if (type === 'remove') updatedActions = node.data.updates.filter((_:any, idx:number) => idx !== index)
+            else if (type === 'add') updatedActions = [...node.data.updates, {motherstructure:'tickets', is_customizable:false, name:'user_id', op:'set', value:-1}]
+            else if (type === 'edit') {
+                updatedActions = node.data.updates.map((message: any, idx: number) => {
+                  if (idx === index) return newAction
+                  return message
+                })
+            }
+            return {...node, data: { ...node.data, updates: updatedActions}}
+        })
+      ) 
+    }
+
     //EDIT SIMPLE FLOW DATA
-    const editSimpleFlowData = (nodeId:string | undefined, keyToEdit:string, newData:number | string ) => {
+    const editSimpleFlowData = (nodeId:string | undefined, keyToEdit:string, newData:any ) => {
         setNodes((nds) => nds.map((node) => {
             if (node.id !== nodeId) return node
             return {...node, data: { ...node.data, [keyToEdit]: newData}}
+        }))
+    }
+
+    const editFunctionFlowData = (nodeId:string | undefined, newData:any ) => {
+        setNodes((nds) => nds.map((node) => {
+            if (node.id !== nodeId) return node
+            return {...node, data: { functions:node.data.functions, ...newData}}
         }))
     }
 
@@ -463,6 +499,34 @@ const Flow = () => {
                 }
                  
             }
+            
+            const responseFunctions = await fetchData({endpoint:`superservice/${auth.authData.organizationId}/clients`, setWaiting, auth })
+            
+            //CAMBIAR LÓGICA, AHORA ESTOY FALSEANDO
+            if (responseFunctions?.status === 200) {
+                //const functionsList = responseFunctions.data
+                const functionsList = [{name:'Función 1', uuid:'orjenojv-edkv4refv-r4vf4rev-dewewd', args:['num_pedido', 'anyo', 'tienda'], output:['status', 'date']}]
+
+                const UUIDsList = functionsList.map((item:any) => item.uuid)
+                const dictName = functionsList.reduce((acc:any, item:any) => {
+                    acc[item.uuid] = item.name
+                    return acc
+                }, {})
+                const dictArgs = functionsList.reduce((acc:any, item:any) => {
+                    acc[item.uuid] = item.args
+                    return acc
+                }, {})
+                const dictOutputs = functionsList.reduce((acc:any, item:any) => {
+                    acc[item.uuid] = item.output
+                    return acc
+                }, {})
+        
+                setFlowFunctions(UUIDsList)
+                functionsNameMap.current = dictName
+                functionsArgsMap.current = dictArgs
+                functionsOutputsMap.current = dictOutputs
+            }
+
         }
         fetchInitialData()
     }, [])
@@ -487,6 +551,18 @@ const Flow = () => {
 
         const node = nodes.find(node => node.id === showNodesAction?.nodeId)
         const scrollRef = useRef<HTMLDivElement>(null)
+
+        const structureList:('ticket' | 'client' | 'contact_business')[] = ['ticket', 'client', 'contact_business']    
+        const structureLabelsMap:{[key in 'ticket' | 'client' | 'contact_business']:string} = {'ticket':t('tickets'), 'client':t('clients'),'contact_business':t('contact_businesses')}
+        const ticketsList = ['user_id', 'group_id', 'channel_type', 'title', 'subject', 'urgency_rating', 'status', 'unseen_changes', 'tags', 'is_matilda_engaged', 'is_satisfaction_offered']
+        const ticketsLabelsMap:{[key:string]:string} = {}
+        ticketsList.forEach((structure, index) => {ticketsLabelsMap[structure] = t(structure)})
+        const clientsList = ['contact_business_id', 'name', 'language', 'rating', 'notes', 'labels']
+        const structureClientsMap:{[key:string]:string} = {}
+        clientsList.forEach((structure, index) => {structureClientsMap[structure] = t(structure)})
+        const businessList = ['name', 'domain', 'notes', 'labels']
+        const structureBusinessMap:{[key:string]:string} = {}
+        businessList.forEach((structure, index) => {structureBusinessMap[structure] = t(structure)})
 
         switch (showNodesAction?.actionType) {
 
@@ -515,13 +591,12 @@ const Flow = () => {
                  
                 const variablesLabelsMap:{[key:number]:string} = {}
                 flowVariables.forEach((variable, index) => {variablesLabelsMap[index] = t(flowVariables[index].name)})
-        
                 
                 const columnInequalities = {'bool':['eq', 'exists'], 'int':['leq', 'geq', 'eq', 'neq', 'in', 'nin', 'exists'], 'float':['leq', 'geq', 'eq', 'neq', 'in', 'nin', 'exists'], 'str':['eq', 'neq', 'in', 'nin', 'contains', 'ncontains', 'exists'], 'timestamp':['geq', 'leq', 'eq', 'neq', 'exists'], 'list':['contains', 'ncontains', 'exists'], 'json':['contains', 'ncontains', 'exists'] }
                 const inequalitiesMap = {"eq":t('eq'), "neq": t('neq'), "leq": t('leq'), "geq": t('geq'), "in":t('in'), "nin":t('nin'), "contains": t('contains'), "ncontains": t('ncontains'), "exists":t('exists')}
 
                 return (
-                    <Box ref={scrollRef} overflow={'scroll'}>
+                    <Box ref={scrollRef} overflow={'scroll'}  p='30px'>
                         <EditText value={branchData.name} setValue={(value:string) => setBranchData((prev) => ({...prev, name:value}))} placeholder={t('AddBranchName')}/>
                         <Box bg='gray.300' width={'100%'} height={'1px'} mt='2vh' mb='2vh'/>
                         {flowVariables.length === 0?<Text fontSize={'.9em'}>{t('NoVariablesSelected')}</Text>:<> 
@@ -547,6 +622,7 @@ const Flow = () => {
                     </Box>                    
                 )
             }
+
             case 'extract': {
                 const [messageData, setMessageData] = useState<{index:number, message:FlowMessage, require_confirmation:boolean, confirmation_message:FlowMessage}>(node?.data.variables[showNodesAction?.actionData.index])
                 const [confirmationMessage, setConfirmationMessage] = useState<FlowMessage>(messageData.confirmation_message)
@@ -561,10 +637,9 @@ const Flow = () => {
 
                 const variablesLabelsMap:{[key:number]:string} = {}
                 flowVariables.forEach((variable, index) => {variablesLabelsMap[index] = t(flowVariables[index].name)})
-        
 
                 return (
-                <Box ref={scrollRef} overflow={'scroll'}>
+                <Box ref={scrollRef} overflow={'scroll'}  p='30px'>
                     {flowVariables.length === 0?<Text fontSize={'.9em'}>{t('NoVariablesSelected')}</Text>:<> 
                     <Text mb='1vh'color='gray.600' fontSize={'.8em'} fontWeight={'medium'}>{t('VariableType')}</Text>
                     <CustomSelect containerRef={scrollRef} hide={false} selectedItem={messageData.index} setSelectedItem={(value) => setMessageData((prev) => ({...prev, index: value}))} options={Array.from({length: flowVariables.length}, (v, i) => i)} labelsMap={variablesLabelsMap} />
@@ -576,11 +651,14 @@ const Flow = () => {
                         <Button bg={messageData.require_confirmation?'brand.gradient_blue':'gray.200'} color={messageData.require_confirmation?'white':'black'} size='sm' _hover={{bg:messageData.require_confirmation?'brand.gradient_blue_hover':'gray.300'}} onClick={() => setMessageData((prev) => ({...prev, require_confirmation:true}))} >{t('Yes')}</Button>
                         <Button bg={!messageData.require_confirmation?'brand.gradient_blue':'gray.200'} color={!messageData.require_confirmation?'white':'black'} size='sm' _hover={{bg:!messageData.require_confirmation?'brand.gradient_blue_hover':'gray.300'}} onClick={() => setMessageData((prev) => ({...prev, require_confirmation:false}))}>{t('No')}</Button>
                     </Flex> 
-                    <Text  mt='2vh' color='gray.600' fontSize={'.8em'} fontWeight={'medium'}>{t('ConfirmationMessage')}</Text>
-                    <EditMessage scrollRef={scrollRef} messageData={confirmationMessage} setMessageData={setConfirmationMessage}/>
+                    {messageData.require_confirmation && <>
+                        <Text  mt='2vh' color='gray.600' fontSize={'.8em'} fontWeight={'medium'}>{t('ConfirmationMessage')}</Text>
+                        <EditMessage scrollRef={scrollRef} messageData={confirmationMessage} setMessageData={setConfirmationMessage}/>
+                    </>}
                     </>}
                 </Box>)
             }
+
             case 'message': {
 
                 const [messageData, setMessageData] = useState<FlowMessage>(node?.data.messages[showNodesAction?.actionData.index])
@@ -588,7 +666,10 @@ const Flow = () => {
                     editMessage(showNodesAction?.nodeId, showNodesAction?.actionData.index, 'edit', messageData)
                 },[messageData])
        
-                return (<EditMessage scrollRef={scrollRef} messageData={messageData} setMessageData={setMessageData}/>)
+                return (
+                <Box ref={scrollRef} overflow={'scroll'}  p='30px'>
+                    <EditMessage scrollRef={scrollRef} messageData={messageData} setMessageData={setMessageData}/>
+                </Box>)
             }
 
             case 'flow_result':
@@ -598,13 +679,246 @@ const Flow = () => {
                 },[flowResult])
 
                 return(
-                <Box ref={scrollRef} overflow={'scroll'}>
+                <Box ref={scrollRef} overflow={'scroll'}  p='30px'>
                     <Text mb='1vh'color='gray.600' fontSize={'.8em'} fontWeight={'medium'}>{t('FlowResult')}</Text>
                     <Textarea mt='5px'  maxLength={2000} height={'auto'} placeholder={`${t('FlowResultPlaceholder')}...`} maxH='300px' value={flowResult} onChange={(e) => setFlowResult(e.target.value)} p='8px'  borderRadius='.5rem' fontSize={'.9em'}  _hover={{border: "1px solid #CBD5E0" }} _focus={{p:'7px',borderColor: "rgb(77, 144, 254)", borderWidth: "2px"}}/>
                 </Box>
                 )
 
+            case 'edit_fields':
+
+                //BOOLEAN FOR NOT CHANGING THE VALUE ON FIRST RENDER
+                const firstRender = useRef<boolean>(true)
+
+                //MAPPING CONSTANTS
+                const operationTypesDict = {'user_id':['set'], 'group_id':['set'], 'channel_type':['set'], 'title':['set', 'concatenate'], 'subject':['set'], 'urgency_rating':['set', 'add', 'substract'], 'status':['set'], 'unseen_changes':['set'], 'tags':['append', 'remove'], 'is_matilda_engaged':['set'],'is_satisfaction_offered':['set'],
+                'contact_business_id':['set'], 'name':['set', 'concatenate'], 'language':['set'], 'rating':['set', 'add', 'substract'], 'notes':['set', 'concatenate'], 'labels':['append', 'remove'],
+                'domain':['set', 'concatenate']
+                }
+                const operationLabelsMap = {'set':t('set'), 'add':t('add'), 'substract':t('substract'), 'concatenate':t('concatenate'), 'append':t('append'), 'remove':t('remove')}
+
+                //FETCH DATA LOGIC
+                const [fieldsData, setFieldsData] = useState<FieldAction>(node?.data.updates[showNodesAction?.actionData.index])
+                useEffect(()=> {
+                    editFieldAction(showNodesAction?.nodeId, showNodesAction?.actionData.index, 'edit', fieldsData)
+                },[fieldsData])
+
+                //NAMES TO SELECT ON CHANGE MOTHERSTRUCTURE
+                const selectableNames = fieldsData.motherstructure === 'ticket' ? ticketsList : fieldsData.motherstructure === 'client' ? clientsList : businessList
+                const selectableDict = fieldsData.motherstructure === 'ticket' ? ticketsLabelsMap : fieldsData.motherstructure === 'client' ? structureClientsMap : structureBusinessMap
+                useEffect(()=> {
+                    if (firstRender.current === false) setFieldsData((prev) => ({...prev, value:''}))
+                    else firstRender.current = false 
+                },[fieldsData.name])
+
+                return(
+                    <Box ref={scrollRef} overflow={'scroll'}  p='30px'>
+         
+                        <Text mb='1vh'color='gray.600' fontSize={'.8em'} fontWeight={'medium'}>{t('StructureUpdate')}</Text>
+                        <CustomSelect containerRef={scrollRef} hide={false} selectedItem={fieldsData.motherstructure} setSelectedItem={(value) => setFieldsData((prev) => ({...prev, motherstructure:value}))} options={structureList} labelsMap={structureLabelsMap} />
+                        <Text mt='1vh' mb='1vh'color='gray.600' fontSize={'.8em'} fontWeight={'medium'}>{t('IsCustomizable')}</Text>
+                        <Flex gap='10px' mt='5px'>
+                            <Button bg={fieldsData.is_customizable?'brand.gradient_blue':'gray.200'} color={fieldsData.is_customizable?'white':'black'} size='sm' _hover={{bg:fieldsData.is_customizable?'brand.gradient_blue_hover':'gray.300'}} onClick={() => setFieldsData((prev) => ({...prev, is_customizable:true}))}>{t('Yes')}</Button>
+                            <Button bg={!fieldsData.is_customizable?'brand.gradient_blue':'gray.200'} color={!fieldsData.is_customizable?'white':'black'} size='sm' _hover={{bg:!fieldsData.is_customizable?'brand.gradient_blue_hover':'gray.300'}} onClick={() => setFieldsData((prev) => ({...prev, is_customizable:false}))}>{t('No')}</Button>
+                        </Flex> 
+                        <Text mt='1vh' mb='1vh'color='gray.600' fontSize={'.8em'} fontWeight={'medium'}>{t('ActionDefinition')}</Text>
+                        {fieldsData.is_customizable? <Text></Text>:
+                        
+                        <Flex alignItems={'center'} gap='10px'>
+                            <Box flex='1'> 
+                                <CustomSelect containerRef={scrollRef} hide={false} selectedItem={fieldsData.op} setSelectedItem={(value) => setFieldsData((prev) => ({...prev, op:value}))} options={(operationTypesDict[fieldsData.name as keyof typeof operationTypesDict] || [])} labelsMap={operationLabelsMap} />
+                            </Box>
+                            <Box flex='1'> 
+                                <CustomSelect containerRef={scrollRef} hide={false} selectedItem={fieldsData.name} setSelectedItem={(value) => setFieldsData((prev) => ({...prev, name:value}))} options={selectableNames} labelsMap={selectableDict} />
+                            </Box>
+                            <Text>{t(`${fieldsData.op}_2`)}</Text>
+                            <Box flex='1'> 
+                                <VariableTypeComponent inputType={fieldsData.name} value={fieldsData.value} setValue={(value) => setFieldsData((prev) => ({...prev, value}))}/>
+                            </Box>
+                        </Flex>}
+                    </Box>
+                )
+
+            case 'function':
+   
+                //BOOLEAN FOR NOT CHANGING THE VALUE ON FIRST RENDER
+                const firstRender2 = useRef<boolean>(true)
+
+                //FLOW VARIABLES MAP
+                const variablesLabelsMap:{[key:number]:string} = {}
+                flowVariables.forEach((variable, index) => {variablesLabelsMap[index] = t(flowVariables[index].name)})
+
+                //CONVERTING THE NDOE DATA TO MANIPULATE IT
+                const { functions, ...rest } = node?.data 
+                const [functionData, setFunctionData] = useState<FunctionType>(rest)
+
+                useEffect(()=> {editFunctionFlowData(showNodesAction?.nodeId, functionData)},[functionData])
+
+                //SELECTABLE ARGS, BASED ON THE FUNCTGION UUID AND THE ARGS THAT ARE ALREADY SELECTED 
+                const [argsToSelect, setArgsToSelect] = useState<string[]>([])
+                const [outputsToSelect, setOutputsToSelect] = useState<string[]>([])
+
+                useEffect(()=> {
+                    if (firstRender2.current === false) {
+                        setArgsToSelect(functionsArgsMap.current[functionData.uuid])
+                        setOutputsToSelect(functionsOutputsMap.current[functionData.uuid])
+                        setFunctionData({uuid:functionData.uuid, variable_args:{}, motherstructure_args:{}, hardcoded_args:{}, error_nodes_ids:{}, next_node_index:null, output_to_variables:{}})
+                    }
+                    else firstRender2.current = false
+                },[functionData.uuid])
+
+                //SELECTABLE ARGUMENTS AND OUTPUTS
+                const selectedArgs = Object.keys(functionData.variable_args).concat(Object.keys(functionData.motherstructure_args)).concat(Object.keys(functionData.hardcoded_args))
+                let selectableArgs:string[]  = []
+                if (functionData.uuid !== '' && argsToSelect !== undefined) selectableArgs = argsToSelect.filter(arg => !selectedArgs.includes(arg))
+                const selectedOutputs = Object.keys(functionData.output_to_variables)
+                let selectableOutputs:string[]  = []
+                if (functionData.uuid !== '' && outputsToSelect !== undefined) selectableOutputs = outputsToSelect.filter(arg => !selectedOutputs.includes(arg))
+
+                //FUNCTION FOR EDITING ARGS
+                const editArg = (argType:'variable_args' | 'motherstructure_args' | 'hardcoded_args' | 'output_to_variables', type:'add' | 'edit' | 'remove', argKey?:string,  newValue?:any) => {
+                    
+                    if (type === 'add' && (argType === 'output_to_variables'?selectableOutputs:selectableArgs).length > 0) {
+                        setFunctionData((prev) => ({...prev, [argType]: {...prev[argType], [(argType === 'output_to_variables'?selectableOutputs:selectableArgs)[0]]: argType === 'motherstructure_args' ? { motherstructure: 'ticket', is_customizable: false, name: 'user_id' }: -1 }}))
+                    } 
+                    else if (type === 'remove' && argKey !== undefined) {
+                        setFunctionData((prev) => {
+                            const updatedArgType = { ...prev[argType] }
+                            delete updatedArgType[argKey]
+                            return {...prev, [argType]: updatedArgType}
+                        })
+                    }
+                    else if (type === 'edit'  && argKey !== undefined   && newValue !== undefined) {
+                        setFunctionData((prev) => {
+                            const updatedArgType = { ...prev[argType] }
+                            updatedArgType[argKey] = newValue
+                            return {...prev, [argType]: updatedArgType}
+                        })
+                    }
+
+                }   
+
+                //BUTTON FOR ADDING A NEW ARG
+                const AddArgButton = ({argType}:{argType:'variable_args' | 'motherstructure_args' | 'hardcoded_args' | 'output_to_variables'}) => {
+
+                    //SHOW AND HIDE BOX LOGIC
+                    const boxRef = useRef<HTMLDivElement>(null)
+                    const buttonRef = useRef<HTMLButtonElement>(null)
+                    const [showAdd, setShowAdd] = useState<boolean>(false)
+                    useOutsideClick({ref1:buttonRef, ref2:boxRef, containerRef:scrollRef, onOutsideClick:setShowAdd})
+                    const [boxPosition, setBoxPosition] = useState<'top' | 'bottom'>('bottom')
+                    const [boxStyle, setBoxStyle] = useState<CSSProperties>({})
+                    determineBoxStyle({buttonRef, setBoxStyle, setBoxPosition, changeVariable:showAdd})
+                    
+                    //FRONT
+                    return (
+                        <Flex mt='2vh' flexDir={'row-reverse'}>
+                            <Button ref={buttonRef} onClick={() => setShowAdd(true)} leftIcon={<FaPlus/>} size={'sm'}>{argType === 'output_to_variables' ? t('AddOutput'):t('AddArg')}</Button> 
+                            <AnimatePresence> 
+                                {showAdd && 
+                                <Portal>
+                                    <MotionBox initial={{ opacity: 0, marginTop: boxPosition === 'bottom'?-10:10 }} animate={{ opacity: 1, marginTop: 0 }}  exit={{ opacity: 0,marginTop: boxPosition === 'bottom'?-10:10}} transition={{ duration: 0.2,  ease: [0.0, 0.9, 0.9, 1.0],   opacity: {duration: 0.2,  ease: [0.0, 0.9, 0.9, 1.0]}}}
+                                    top={boxStyle.top} bottom={boxStyle.bottom}right={boxStyle.right} width={boxStyle.width} maxH='40vh' overflow={'scroll'} gap='10px' ref={boxRef} fontSize={'.9em'} boxShadow={'0px 0px 10px rgba(0, 0, 0, 0.2)'} bg='white' zIndex={100000} position={'absolute'} borderRadius={'.3rem'} borderWidth={'1px'} borderColor={'gray.300'}>
+                                        {(argType === 'output_to_variables' ? selectableOutputs:selectableArgs).map((arg, index) => (
+                                            <Flex p='5px' _hover={{bg:'brand.hover_gray'}} key={`arg-${index}`} onClick={() => {setShowAdd(false);editArg(argType, 'add')}}>
+                                                <Text fontSize={'.9em'}>{arg}</Text>
+                                            </Flex>
+                                        ))}
+                                    </MotionBox>
+                                </Portal>
+                            }
+                        </AnimatePresence>
+                        </Flex>
+
+                    )
+                }
+
+                //COMPONENT FOR THE MOTHERSTRUCTURE ARGS
+                const MotherStructureArg = ({selectedArg, keyToEdit}:{selectedArg:{motherstructure:'ticket' | 'client' | 'contact_business',is_customizable:boolean, name:string}, keyToEdit:string}) => {
+
+                    const selectableNames2 = selectedArg.motherstructure === 'ticket' ? ticketsList : selectedArg.motherstructure === 'client' ? clientsList : businessList
+                    const selectableDict2 = selectedArg.motherstructure === 'ticket' ? ticketsLabelsMap : selectedArg.motherstructure === 'client' ? structureClientsMap : structureBusinessMap
+    
+                
+                    return (
+                    <> 
+                        <Text mb='.5vh' mt='1vh' color='gray.600' fontSize={'.8em'} fontWeight={'medium'}>{t('StructureUpdate')}</Text>
+                        <CustomSelect containerRef={scrollRef} hide={false} selectedItem={selectedArg.motherstructure} setSelectedItem={(value) => editArg('motherstructure_args', 'edit', keyToEdit, {...functionData.motherstructure_args[keyToEdit], motherstructure:value})} options={structureList} labelsMap={structureLabelsMap} />
+
+                        <Text mt='1vh'  mb='.5vh' color='gray.600' fontSize={'.8em'} fontWeight={'medium'}>{t('IsCustomizable')}</Text>
+                        <Flex gap='10px' >
+                            <Button bg={selectedArg.is_customizable?'brand.gradient_blue':'gray.200'} color={selectedArg.is_customizable?'white':'black'} size='xs' _hover={{bg:selectedArg.is_customizable?'brand.gradient_blue_hover':'gray.300'}} onClick={() => editArg('motherstructure_args', 'edit', keyToEdit, {...functionData.motherstructure_args[keyToEdit], is_customizable:true})} >{t('Yes')}</Button>
+                            <Button bg={!selectedArg.is_customizable?'brand.gradient_blue':'gray.200'} color={!selectedArg.is_customizable?'white':'black'} size='xs' _hover={{bg:!selectedArg.is_customizable?'brand.gradient_blue_hover':'gray.300'}} onClick={() => editArg('motherstructure_args', 'edit', keyToEdit, {...functionData.motherstructure_args[keyToEdit], is_customizable:false})} >{t('No')}</Button>
+                        </Flex>
+                        
+                        <Text mb='.5vh' mt='1vh' color='gray.600' fontSize={'.8em'} fontWeight={'medium'}>{t('StructureName')}</Text>
+                        {selectedArg.is_customizable? <Text></Text>: 
+                            <CustomSelect containerRef={scrollRef} hide={false} selectedItem={functionData.motherstructure_args[keyToEdit].name} setSelectedItem={(value) => editArg('motherstructure_args', 'edit', keyToEdit, {...functionData.motherstructure_args[keyToEdit], name:value})}  options={selectableNames2} labelsMap={selectableDict2} />
+                        }
+                    </>)
+
+                }
+                
+                return (
+                    <Box ref={scrollRef} overflowY={'scroll'} p='30px'>
+                        <Text mb='1vh'color='gray.600' fontSize={'.8em'} fontWeight={'medium'}>{t('FunctionToSelect')}</Text>
+                        <CustomSelect containerRef={scrollRef} hide={false} selectedItem={functionData.uuid} setSelectedItem={(value) => setFunctionData((prev) => ({...prev, uuid:value}))} options={flowsFunctions} labelsMap={functionsNameMap.current} />
+                        
+                        {functionData.uuid !== '' && <>
+                            <Text mt='2vh' mb='1vh'color='gray.600' fontSize={'.8em'} fontWeight={'medium'}>{t('VariableArgs')}</Text>
+                            {Object.keys(functionData.variable_args).map((keyToEdit, index) => (
+                                <Flex mt='1vh' gap='20px' key={`variable-args-${index}`} alignItems={'center'}>
+                                    <Text  whiteSpace={'nowrap'} textOverflow={'ellipsis'} overflow={'hidden'} flex='1' fontWeight={'medium'} >{keyToEdit}</Text>
+                                    <Box flex='2'> 
+                                        <CustomSelect containerRef={scrollRef} hide={false} selectedItem={functionData.variable_args[keyToEdit]} setSelectedItem={(value) => editArg('variable_args', 'edit', keyToEdit, value )} options={Array.from({length: flowVariables.length}, (v, i) => i)} labelsMap={variablesLabelsMap} />
+                                    </Box>
+                                    <IconButton bg='transaprent' border='none' size='sm' _hover={{bg:'gray.200'}} icon={<RxCross2/>} aria-label='delete-arg-1' onClick={() => editArg('variable_args', 'remove', keyToEdit)}/>
+                                </Flex>
+                                
+                            ))}  
+                            <AddArgButton argType={'variable_args'}/>
+
+                            <Text mt='2vh' mb='1vh'color='gray.600' fontSize={'.8em'} fontWeight={'medium'}>{t('StructureArgs')}</Text>
+                            {Object.keys(functionData.motherstructure_args).map((keyToEdit, index) => (
+                                <Box  mt='1vh'  key={`motherstructure-args.${index}`} bg='white' borderRadius={'.5em'}  p='15px' boxShadow={'0px 0px 10px rgba(0, 0, 0, 0.15)'}> 
+                                    <Flex justifyContent={'space-between'} alignItems={'center'}> 
+                                        <Text whiteSpace={'nowrap'} textOverflow={'ellipsis'} overflow={'hidden'} flex='1' fontWeight={'medium'} >{keyToEdit}</Text>
+                                        <IconButton bg='transaprent' border='none' size='sm' _hover={{bg:'gray.200'}} icon={<RxCross2/>} aria-label='delete-arg-2' onClick={() => editArg('motherstructure_args', 'remove', keyToEdit)}/>
+                                    </Flex>
+                                    <MotherStructureArg selectedArg={functionData.motherstructure_args[keyToEdit]} keyToEdit={keyToEdit}/>
+                                </Box>
+                            ))}  
+                            <AddArgButton argType={'motherstructure_args'}/>
+
+                            <Text  mt='2vh' mb='1vh'color='gray.600' fontSize={'.8em'} fontWeight={'medium'}>{t('HarcodedArgs')}</Text>
+                            {Object.keys(functionData.hardcoded_args).map((keyToEdit, index) => (
+                                <Flex  mt='1vh'  gap='20px' key={`hardcoded-args-${index}`} alignItems={'center'}>
+                                    <Text whiteSpace={'nowrap'} textOverflow={'ellipsis'} overflow={'hidden'} flex='1' fontWeight={'medium'} >{keyToEdit}</Text>
+                                    <Box flex='2'> 
+                                        <EditText hideInput={false} value={functionData.hardcoded_args[keyToEdit]} setValue={(value:string) => editArg('hardcoded_args', 'edit', keyToEdit, value )}/>
+                                    </Box>
+                                    <IconButton bg='transaprent' border='none' size='sm' _hover={{bg:'gray.200'}} icon={<RxCross2/>} aria-label='delete-arg-3' onClick={() => editArg('hardcoded_args', 'remove', keyToEdit)}/>
+                                </Flex>
+                            ))}    
+                            <AddArgButton argType={'hardcoded_args'}/>
+
+                            <Text  mt='2vh' mb='1vh'color='gray.600' fontSize={'.8em'} fontWeight={'medium'}>{t('OutputArgs')}</Text>
+                            {Object.keys(functionData.output_to_variables).map((keyToEdit, index) => (
+                                <Flex  mt='1vh'  gap='20px' key={`output-args-${index}`} alignItems={'center'}>
+                                    <Text  whiteSpace={'nowrap'} textOverflow={'ellipsis'} overflow={'hidden'} flex='1' fontWeight={'medium'} >{keyToEdit}</Text>
+                                    <Box flex='2'> 
+                                        <CustomSelect containerRef={scrollRef} hide={false} selectedItem={functionData.output_to_variables[keyToEdit]} setSelectedItem={(value) => editArg('output_to_variables', 'edit', keyToEdit, value )} options={Array.from({length: flowVariables.length}, (v, i) => i)} labelsMap={variablesLabelsMap} />
+                                    </Box>
+                                    <IconButton bg='transaprent' border='none' size='sm' _hover={{bg:'gray.200'}} icon={<RxCross2/>} aria-label='delete-output' onClick={() => editArg('output_to_variables', 'remove', keyToEdit)}/>
+                                </Flex>
+                            ))}    
+                            <AddArgButton argType={'output_to_variables'}/>
+
+                        </>}
+                    </Box>)
+                 
             default: return <></>
+        
         }
     }
 
@@ -612,7 +926,7 @@ const Flow = () => {
     const memoizedNodesEditor = useMemo(() => (
         <AnimatePresence> 
         {showNodesAction && <>
-            <MotionBox initial={{right:-400}} animate={{right:0}}  exit={{right:-400}} transition={{ duration: .15 }} position='fixed' top={0} width='700px' height='100vh' padding='30px' backgroundColor='white' zIndex={201} display='flex' justifyContent='space-between' flexDirection='column'> 
+            <MotionBox initial={{right:-400}} animate={{right:0}}  exit={{right:-400}} transition={{ duration: .15 }} position='fixed' top={0} width='700px' height='100vh'  backgroundColor='white' zIndex={201} display='flex' justifyContent='space-between' flexDirection='column'> 
                 <NodesEditBox/>
             </MotionBox>
          </>}
@@ -630,8 +944,10 @@ const Flow = () => {
 
     //FRONT
     return (<>
-        <Flex height={'100vh'} width={'calc(100vw - 60px)'} flexDir={'column'} bg='green' backdropFilter='blur(1px)' >
+        <Flex height={'100vh'} width={'calc(100vw - 60px)'} flexDir={'column'} bg='white' backdropFilter='blur(1px)' >
 
+            {waiting ? <LoadingIconButton/> :
+            <> 
             <Box left={'2vw'} ref={nameInputRef} top='2vw' zIndex={100} position={'absolute'} boxShadow={'0px 0px 10px rgba(0, 0, 0, 0.1)'} maxH={'calc(100vh - 4vw)'} overflow={'scroll'} bg='white' borderRadius={'.5rem'} borderWidth={'1px'} borderColor={'gray.300'} > 
                 <Flex gap='10px' alignItems={'center'} p='10px'> 
                     <Box width={'400px'} > 
@@ -687,6 +1003,7 @@ const Flow = () => {
 
             {memoizedNodesEditor}
             {memoizedCreateVariable}
+            </>}
         </Flex>
  
     </>)
@@ -751,7 +1068,6 @@ const CreateVariable = ({setFlowVariables, setShowCreateVariable}:{setFlowVariab
         else if (action === 'delete' && index !== undefined) setCurrentVariable((prev) => ({...prev, [keyToEdit]: prev[keyToEdit].filter((_, i) => i !== index)}))
         
     }
-
 
     return (<> 
         <Box p='15px' minW={'600px'}>
@@ -835,7 +1151,7 @@ const InputType = ({inputType, value, setValue}:{inputType:DataTypes,value:strin
 
 } 
 
-
+//COMPONENT FOR EDITING A MESSAGE
 const EditMessage = ({scrollRef, messageData, setMessageData}:{scrollRef:RefObject<HTMLDivElement>, messageData:FlowMessage, setMessageData:Dispatch<SetStateAction<FlowMessage>>}) => {
 
     const  { t } = useTranslation('flows') 
@@ -913,4 +1229,138 @@ const EditMessage = ({scrollRef, messageData, setMessageData}:{scrollRef:RefObje
         </AnimatePresence>
         </Box>}
     </Box>)
+}
+
+//SHOWING THE VALUE TYPE DEPENDING ON THE VATIABLE TO EDIT IN MOTHERSTRUCTURE
+const VariableTypeComponent = ({inputType, value, setValue}:{inputType:string, value:any, setValue:(value:any) => void}) => {
+    
+    //USEFUL CONSTANTS
+    const { t } = useTranslation('flows')
+    const auth = useAuth()
+
+    switch(inputType) {
+        case 'user_id':
+            {
+                let usersDict:{[key:number]:string} = {}
+                if (auth.authData.users) Object.keys(auth.authData?.users).map((key:any) => {if (auth?.authData?.users) usersDict[key] = auth?.authData?.users[key].name})
+                usersDict[0] = t('NoAgent')
+                usersDict[-1] = 'Matilda'
+                return (<CustomSelect hide={false} selectedItem={value} setSelectedItem={(value) => setValue(value) }  options={Object.keys(usersDict).map(key => parseInt(key))} labelsMap={usersDict} />)
+            }
+        case 'group_id':
+            {
+                //FALTA GROUPS
+                let usersDict:{[key:number]:string} = {}
+                if (auth.authData.users) Object.keys(auth.authData?.users).map((key:any) => {if (auth?.authData?.users) usersDict[key] = auth?.authData?.users[key].name})
+                usersDict[0] = t('NoAgent')
+                usersDict[-1] = 'Matilda'
+                return (<CustomSelect hide={false} selectedItem={value} setSelectedItem={(value) => setValue(value) }  options={Object.keys(usersDict).map(key => parseInt(key))} labelsMap={usersDict} />)
+            }
+
+        case 'channel_type':
+            return (<CustomSelect hide={false} selectedItem={value} setSelectedItem={(value) => setValue(value) }  options={['email', 'whatsapp', 'instagram', 'webchat', 'google_business', 'phone']} labelsMap={{'email':t('email'), 'whatsapp':t('whatsapp'), 'instagram':t('instagram'), 'webchat':t('webchat'), 'google_business':t('google_business'), 'phone':t('phone')}} />)
+        case 'title':
+        case 'tags':
+        case 'name':
+        case 'notes':
+        case 'labels':
+        case 'domain':
+            return <EditText value={value} setValue={(value) => setValue(value) } hideInput={false} />
+        case 'subject':
+            let subjectsDict:{[key:number]:string} = {}
+            if (auth.authData?.users) Object.keys(auth.authData?.users).map((key:any) => {if (auth?.authData?.users) subjectsDict[key] = auth?.authData?.users[key].name})
+            return (<CustomSelect hide={false} selectedItem={value} setSelectedItem={(value) => setValue(value) }  options={Object.keys(subjectsDict).map(key => parseInt(key))} labelsMap={subjectsDict} />)
+        case 'urgency_rating':
+            const ratingMapDic = {0:`${t('Priority_0')} (0)`, 1:`${t('Priority_1')} (1)`, 2:`${t('Priority_2')} (2)`, 3:`${t('Priority_3')} (3)`, 4:`${t('Priority_4')} (4)`}
+            return (<CustomSelect hide={false} selectedItem={value} setSelectedItem={(value) => setValue(value) }  options={Object.keys(ratingMapDic).map(key => parseInt(key))} labelsMap={ratingMapDic} />)
+        case 'status':
+            const statusMapDic = {'new':t('new'), 'open':t('open'), solved:t('solved'), 'pending':t('pending'), 'closed':t('closed')}
+            return (<CustomSelect hide={false} selectedItem={value} setSelectedItem={(value) => setValue(value) }  options={Object.keys(statusMapDic).map(key => parseInt(key))} labelsMap={statusMapDic} />)
+        case 'is_matilda_engaged':
+        case 'unseen_changes':
+        case 'is_satisfaction_offered':
+            const boolDict = {"True":t('true'), "False":t('false')}
+            return <CustomSelect hide={false} selectedItem={value} setSelectedItem={(value) => setValue(value)}  options={Object.keys(boolDict)} labelsMap={boolDict}/>
+        case 'contact_business_id': return <FindBusinessComponent value={value} setValue={setValue} auth={auth}/>
+        case 'language': {
+            let languagesMap:any = {}
+            for (const key in languagesFlags) {
+                if (languagesFlags.hasOwnProperty(key)) {
+                    const values = languagesFlags[key]
+                    languagesMap[key] = values[0]
+                }
+            }
+            return <CustomSelect labelsMap={languagesMap} selectedItem={value}  setSelectedItem={(value) => setValue(value)} options={Object.keys(languagesMap)} hide={false} />
+        }
+
+        case 'rating':
+            <NumberInput value={value} onChange={(value) => setValue(value)} min={1} max={5} clampValueOnBlur={false} >
+                <NumberInputField borderRadius='.5rem'  fontSize={'.9em'} height={'37px'}  borderColor={'gray.300'} _hover={{ border:'1px solid #CBD5E0'}} _focus={{ px:'11px', borderColor: "rgb(77, 144, 254)", borderWidth: "2px" }} px='12px' />
+            </NumberInput>  
+        default: 
+            return null
+    }
+
+} 
+
+const FindBusinessComponent = ({value, setValue, auth}:{value:number, setValue:any, auth:any}) => {
+
+    //REFS
+    const buttonRef = useRef<HTMLDivElement>(null)
+    const boxRef = useRef<HTMLDivElement>(null)
+    const [showSearch, setShowSearch] = useState(false)
+    
+    const [text, setText] = useState<string>('')
+    const [showResults, setShowResults] = useState<boolean>(false)
+    const [elementsList, setElementsList] = useState<any>([])
+    const [waitingResults, setWaitingResults] = useState<boolean>(false)
+
+    //BOOLEAN TO CONTROL THE VISIBILITY OF THE LIST AND CLOSE ON OUTSIDE CLICK
+    useOutsideClick({ref1:buttonRef, ref2:boxRef, onOutsideClick:setShowSearch})
+
+    useEffect(() => {
+        if (text === '') {setWaitingResults(false);setShowResults(false);return}
+        
+        else {
+            setWaitingResults(true)
+            const timeoutId = setTimeout(async () => {
+
+            const response = await fetchData({endpoint: `superservice/${auth.authData.organizationId}/contact_businesses`, setValue:setElementsList, auth, params: { page_index: 1, search: text }})
+            if (response?.status === 200) {setShowResults(true);setWaitingResults(false)}
+            else {setShowResults(false);setWaitingResults(false)}
+            }, 500)
+            return () => clearTimeout(timeoutId)
+        }
+    }, [text])
+
+
+    return (
+        <Box position={'relative'}>
+        <Flex bg={'transaprent'} cursor={'pointer'} alignItems={'center'} onClick={() => setShowSearch(!showSearch)} ref={buttonRef} height={'37px'} fontSize={'.9em'}  border={showSearch ? "3px solid rgb(77, 144, 254)":"1px solid transparent"} justifyContent={'space-between'} px={showSearch?'5px':'7px'} py={showSearch ? "5px" : "7px"} borderRadius='.5rem' _hover={{border:showSearch?'3px solid rgb(77, 144, 254)':'1px solid #CBD5E0'}}>
+            <Text>{value}</Text>
+            <IoIosArrowDown className={showSearch ? "rotate-icon-up" : "rotate-icon-down"}/>
+        </Flex>
+        
+        <AnimatePresence> 
+            {showSearch && 
+            <MotionBox initial={{ opacity: 5, marginTop: -5 }} animate={{ opacity: 1, marginTop: 5 }}  exit={{ opacity: 0,marginTop:-5}} transition={{ duration: 0.2,  ease: [0.0, 0.9, 0.9, 1.0],   opacity: {duration: 0.2,  ease: [0.0, 0.9, 0.9, 1.0]}}}
+                maxH='30vh' overflow={'scroll'} width='140%' gap='10px' ref={boxRef} fontSize={'.9em'} boxShadow={'0px 0px 10px rgba(0, 0, 0, 0.2)'} bg='white' zIndex={100000} position={'absolute'} right={0} borderRadius={'.3rem'} borderWidth={'1px'} borderColor={'gray.300'}>
+                <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Buscar..." style={{border:'none', outline:'none', background:'transparent', padding:'10px'}}/>
+                <Box height={'1px'} width={'100%'} bg='gray.200'/>
+                {(showResults && 'page_data' in elementsList) ? <>
+                    <Box maxH='30vh'>
+                        {elementsList.page_data.length === 0? 
+                        <Box p='15px'><Text fontSize={'.9em'} color='gray.600'>{waitingResults?<LoadingIconButton/>:'No hay ninguna coincidencia'}</Text></Box>
+                        :<> {elementsList.page_data.map((business:ContactBusinessesTable, index:number) => (
+                            <Flex _hover={{bg:'gray.50'}} cursor={'pointer'} alignItems={'center'} onClick={() => {setText('');setValue(business);setShowResults(false)}} key={`user-${index}`} p='10px' gap='10px' >
+                                <Icon boxSize={'12px'} color='gray.700' as={FaBuilding}/>
+                                <Text fontSize={'.9em'}>{business.name}</Text>
+                            </Flex>
+                        ))}</>}
+                    </Box>
+                </>:<Box p='15px'><Text fontSize={'.9em'} color='gray.600'>{waitingResults?<LoadingIconButton/>:'No hay ninguna coincidencia'}</Text></Box>}
+            </MotionBox>} 
+        </AnimatePresence>
+        </Box>
+    )
 }

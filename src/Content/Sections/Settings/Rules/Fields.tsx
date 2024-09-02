@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next"
 //FETCH DATA
 import fetchData from "../../../API/fetchData"
 //FRONT
-import { Text, Box, Flex, Button, NumberInput, NumberInputField, Checkbox } from "@chakra-ui/react"
+import { Text, Box, Flex, Button, NumberInput, NumberInputField, Checkbox, Skeleton } from "@chakra-ui/react"
 //COMPONENTS
 import LoadingIconButton from "../../../Components/LoadingIconButton"
 import EditText from "../../../Components/EditText"
@@ -145,7 +145,7 @@ const Fields = () => {
                 </Box>
                 </Box>
                 <Flex p='15px' mt='2vh' gap='15px' flexDir={'row-reverse'} bg='gray.50' borderTopWidth={'1px'} borderTopColor={'gray.200'}>
-                    <Button  size='sm' color='red' _hover={{color:'red.600', bg:'gray.200'}} onClick={handleDeleteFields}>{waitingDelete?<LoadingIconButton/>:'Eliminar'}</Button>
+                    <Button  size='sm' color='red' _hover={{color:'red.600', bg:'gray.200'}} onClick={handleDeleteFields}>{waitingDelete?<LoadingIconButton/>:t('Delete')}</Button>
                     <Button  size='sm' onClick={()=>setShowConfirmDelete(false)}>{t('Cancel')}</Button>
                 </Flex>
             </ConfirmBox>
@@ -174,33 +174,35 @@ const Fields = () => {
         </Flex>
         <Box width='100%' bg='gray.300' height='1px' mt='2vh' mb='5vh'/>
 
-        {fieldsData?.length === 0 ? 
-            <Box borderRadius={'.5rem'} width={'100%'} bg='gray.50' borderColor={'gray.200'} borderWidth={'1px'} p='15px'>    
-                <Text fontWeight={'medium'} fontSize={'1.1em'}>{t('NoFields')}</Text>
-            </Box>: 
-            <> 
-                <Flex  borderTopRadius={'.5rem'}  borderColor={'gray.300'} borderWidth={'1px'}  minWidth={'1180px'}  gap='20px' alignItems={'center'}  color='gray.500' p='10px'  bg='gray.100' fontWeight={'medium'} > 
-                    <Flex flex='1 0 10px' alignItems={'center'}> 
-                        <Checkbox onChange={(e) => setSelectedElements(e.target.checked ? Array.from({ length: fieldsData?.length || 0 }, (_, index) => index):[])}/>  
+        <Skeleton isLoaded={fieldsData !== null}> 
+            {fieldsData?.length === 0 ? 
+                <Box borderRadius={'.5rem'} width={'100%'} bg='gray.50' borderColor={'gray.200'} borderWidth={'1px'} p='15px'>    
+                    <Text fontWeight={'medium'} fontSize={'1.1em'}>{t('NoFields')}</Text>
+                </Box>: 
+                <> 
+                    <Flex  borderTopRadius={'.5rem'}  borderColor={'gray.300'} borderWidth={'1px'}  minWidth={'1180px'}  gap='20px' alignItems={'center'}  color='gray.500' p='10px'  bg='gray.100' fontWeight={'medium'} > 
+                        <Flex flex='1 0 10px' alignItems={'center'}> 
+                            <Checkbox onChange={(e) => setSelectedElements(e.target.checked ? Array.from({ length: fieldsData?.length || 0 }, (_, index) => index):[])}/>  
+                        </Flex>
+                        <Text flex='25 0 250px'>{t('Name')}</Text>
+                        <Text flex='20 0 200px'>{t('Structure')}</Text>
+                        <Text flex='20 0 200px'>{t('Type')}</Text>
+                        <Text flex='30 0 300px'>{t('Default')}</Text>
                     </Flex>
-                    <Text flex='25 0 250px'>{t('Name')}</Text>
-                    <Text flex='20 0 200px'>{t('Structure')}</Text>
-                    <Text flex='20 0 200px'>{t('Type')}</Text>
-                    <Text flex='30 0 300px'>{t('Default')}</Text>
-                </Flex>
 
-                {fieldsData?.map((row, index) =>( 
-                    <Flex minWidth={'1180px'} borderRadius={index === fieldsData.length - 1?'0 0 .5rem .5rem':'0'} onClick={() => setEditFieldData({index, data:row})} borderWidth={'0 1px 1px 1px'}  gap='20px' key={`field-${index}`}  bg={selectedElements.includes(index)?'blue.100':'none'} alignItems={'center'}  fontSize={'.9em'} color='black' p='10px'  borderColor={'gray.300'}> 
-                        <Box flex='1 0 10px' onClick={(e) => e.stopPropagation()}> 
-                            <Checkbox onChange={(e) => handleCheckboxChange(index, e.target.checked)} isChecked={selectedElements.includes(index)}/>  
-                        </Box>
-                        <Text flex='25 0 250px'>{row.name}</Text>
-                        <Text flex='20 0 200px'>{structuresMap[row.motherstructure]}</Text>
-                        <Text flex='20 0 200px'>{variablesMap[row.type]}</Text>
-                        <Text flex='30 0 300px'>{row.default}</Text>
-                    </Flex>
-                ))}
-            </>}
+                    {fieldsData?.map((row, index) =>( 
+                        <Flex minWidth={'1180px'} borderRadius={index === fieldsData.length - 1?'0 0 .5rem .5rem':'0'} onClick={() => setEditFieldData({index, data:row})} borderWidth={'0 1px 1px 1px'}  gap='20px' key={`field-${index}`}  bg={selectedElements.includes(index)?'blue.100':'none'} alignItems={'center'}  fontSize={'.9em'} color='black' p='10px'  borderColor={'gray.300'}> 
+                            <Box flex='1 0 10px' onClick={(e) => e.stopPropagation()}> 
+                                <Checkbox onChange={(e) => handleCheckboxChange(index, e.target.checked)} isChecked={selectedElements.includes(index)}/>  
+                            </Box>
+                            <Text flex='25 0 250px'>{row.name}</Text>
+                            <Text flex='20 0 200px'>{structuresMap[row.motherstructure]}</Text>
+                            <Text flex='20 0 200px'>{variablesMap[row.type]}</Text>
+                            <Text flex='30 0 300px'>{row.default}</Text>
+                        </Flex>
+                    ))}
+                </>}
+        </Skeleton>
     </Box>
     </>)
 }

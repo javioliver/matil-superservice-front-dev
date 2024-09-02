@@ -81,6 +81,22 @@
     "FlowSwapName":"Nuevo flujo",
     "NoAgent":"Sin agente",
     "NoFlow":"Sin flujo",
+    "AddAction":"Añadir acción",
+    "StructureUpdate":"Estructura a actualizar",
+    "IsCustomizable":"¿Se trata una variable personalizada?",
+    "Structure":"Tipo de estructura",
+    "ActionDefinition":"Definición de la acción",
+    "FunctionToSelect":"Selecciona una función",
+    "FunctionToRun":"Función seleccionada",
+    "NoFunction":"No hay ninguna función seleccionada",
+    "VariableArgs":"Argumentos asociados a variables",
+    "StructureArgs":"Argumentos para modificar estructuras",
+    "HarcodedArgs":"Argumentos hardcodeados",
+    "AddArg":"Añadir argumento",
+    "AddOutput":"Añadir variable de salida",
+    "OutputArgs":"Variables de salida",
+    "ErrorNodes":"Redirecciones en caso de error",
+
     "Name":"Nombre",
     "Name_Des":"Extraer el nombre de un cliente-",
     "Phone":"Teléfono",
@@ -103,7 +119,7 @@
     "Trasfer_Des": "Transferir el ticket a un agente humano.",
     "FlowChange": "Cambiar de flujo",
     "FlowChange_Des": "Cambiar a otro flujo.",
-    "Ticket": "Editar ticket",
+    "Ticket": "Editar campo",
     "Ticket_Des": "Editar alguno de los atributos del ticket.",
     "End": "Terminar",
     "End_Des": "Terminar la conversación. Se marcará el ticket como resuelto",
@@ -139,10 +155,45 @@
     "nin":"No está en",
     "contains": "Contenido en",
     "ncontains": "No contenido en",
-    "exists":"Existe"
+    "exists":"Existe",
+    "user_id":"Usuario",
+    "group_id":"Grupo",
+    "channel_type":"Canal",
+    "title":"Descripción",
+    "subject":"Tema",
+    "urgency_rating":"Prioridad",
+    "unseen_changes":"Mensajes no leídos",
+    "tags":"Etiquetas",
+    "is_matilda_engaged":"Gestionándose por Matilda",
+    "is_satisfaction_offered":"Encuesta enviada",
+    "hours_since_created":"Horas desde la creación",
+    "hours_since_updated":"Horas desde la última actualización",
+    "contact_business_id":"Empresa de contacto",
+    "language":"Idioma",
+    "rating":"Rating",
+    "notes":"Notas",
+    "labels":"Etiquetas",
+    "domain":"Dominio",
+    "tickets":"Tickets",
+    "clients":"Clientes",
+    "contact_businesses":"Empresas de contacto",
 
-    
-    
+    "set":"Establecer",
+    "set_2":"como ",
+    "add":"Sumar a",
+    "add_2":"",
+    "substract":"Restar a",
+    "substract_2":"",
+    "concatenate":"Concatenar",
+    "concatenate_2":"con ",
+    "append":"Añadir",
+    "append_2":"a ",
+    "remove":"Eliminar",
+    "remove_2":"de "
+
+
+
+
 
 
 }

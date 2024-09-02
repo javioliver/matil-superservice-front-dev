@@ -1,9 +1,9 @@
 //REACT
-import { Dispatch, SetStateAction , useEffect, useRef, useState } from 'react'
+import { Dispatch, SetStateAction , useEffect, useRef, useState, Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../../AuthContext.js'
 //FRONT
-import { Flex, Icon, Box, Text, Checkbox, Grid, Button } from '@chakra-ui/react'
+import { Flex, Icon, Box, Text, Checkbox, Grid, Button, NumberInput, NumberInputField } from '@chakra-ui/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Handle, Position } from 'reactflow'
 //COMPONENTS
@@ -19,7 +19,7 @@ import { IoIosArrowDown } from "react-icons/io"
 import { IoSend, IoCheckmarkCircleSharp, IoArrowRedo } from "react-icons/io5"
 import { FaCodeBranch, FaDatabase, FaPlus, FaTicket, FaUserCheck, FaCode, FaArrowRotateLeft } from "react-icons/fa6"
 //TYPING
-import { languagesFlags, logosMap, Channels, actionTypesDefinition, nodeTypesDefinition, Branch, FlowMessage, DataTypes } from '../../Constants/typing.js'
+import { languagesFlags, logosMap, Channels, actionTypesDefinition, nodeTypesDefinition, Branch, FlowMessage, DataTypes, FieldAction } from '../../Constants/typing.js'
  
 type VariableType = {name:string, type:DataTypes, description:string, examples:any[], values:any[], ask_for_confirmation:boolean}
 
@@ -65,12 +65,18 @@ interface SenderNodeData {
 }
 //FUNCTION NODE DATA
 interface FunctionNodeData {
+  uuid:string
   variable_args:{[key:string]:number}
   motherstructure_args:{ motherstructure:'ticket' | 'client' | 'contact_business', is_customizable:boolean, name:string}
   hardcoded_args:{[key:string]:any}
-  error_node_ids:{[key:string]:number}
-  success_node_id:number 
+  error_nodes_ids:{[key:string]:number}
+  output_to_variables:{[key:string]:number}
+  next_node_index:string | undefined 
   functions: {
+    functionsDict:{[key:string]:string}
+    editSimpleFlowData:(nodeId:string | undefined, keyToUpdate:string, newData:any ) => void
+    setShowNodesAction:Dispatch<SetStateAction<null | {nodeId:string, actionType:actionTypesDefinition, actionData:any}>>
+    addNewNode:(sourceData:{sourceId:string, sourceType:nodeTypesDefinition, branchIndex?:number}, targetType:nodeTypesDefinition) => void
     deleteNode:(nodeId:string, resize?:boolean, delete_branch?:boolean) => void
   }
 }
@@ -122,9 +128,13 @@ interface FlowSwapData {
 }
 //MOTHERSTRUCTURE UPDATES
 interface MotherStructureUpdateNodeData { 
-  updates:{motherstructure:'ticket' | 'client' | 'contact_business', is_customizable:boolean, name:string, op:string, value:any}[]
+  next_node_index:string | null
+  updates:FieldAction[]
   functions: {
+    setShowNodesAction:Dispatch<SetStateAction<null | {nodeId:string, actionType:actionTypesDefinition, actionData:any}>>
+    editFieldAction:(nodeId:string | undefined, index:number | undefined, type:'remove' | 'add' | 'edit', newField?:FieldAction ) => void
     deleteNode:(nodeId:string, resize?:boolean, delete_branch?:boolean) => void
+    addNewNode:(sourceData:{sourceId:string, sourceType:nodeTypesDefinition, branchIndex?:number}, targetType:nodeTypesDefinition) => void
   }
 }
 
@@ -266,10 +276,9 @@ export const ExtactorNode = ({id, data}:{id:string, data:ExtractorNodeData}) => 
             <EditorComponent variable={variable} index={index}/>
           ))}
           <Flex flexDir={'row-reverse'}> 
-          <Button mt='15px' leftIcon={<FaPlus/>} size='xs'  onClick={() => data.functions.editExtractor(id, -1, 'add')}>{t('AddData')}</Button>
+            <Button mt='15px' leftIcon={<FaPlus/>} size='xs'  onClick={() => data.functions.editExtractor(id, -1, 'add')}>{t('AddData')}</Button>
           </Flex>
           {data.branches.length === 0 && <Button mt='15px' leftIcon={<FaPlus/>} size='sm' width={'100%'} onClick={() => data.functions.editBranch(id, -1, 'add')}>{t('AddBranches')}</Button>}
-
 
           {data.branches.length > 0 && <Box mt='30px'> 
             <BranchesComponent id={id} branches={data.branches} editBranch={data.functions.editBranch} isExpanded={true} setShowNodesAction={data.functions.setShowNodesAction} addNewNode={data.functions.addNewNode}/>
@@ -468,18 +477,59 @@ export const FunctionNode = ({id, data}:{id:string, data:FunctionNodeData}) => {
 
   return (<> 
       <Box cursor={'default'} bg="gray.50" borderRadius={'.5rem'} borderColor='gray.300' borderWidth={'1px'} width='250px'>
-          <NodeHeader nodeId={id} nodeType='brancher' isExpanded={isExpanded} setIsExpanded={setIsExpanded} deleteNode={data.functions.deleteNode}/>
+          <NodeHeader nodeId={id} nodeType='brancher' isExpanded={isExpanded} setIsExpanded={setIsExpanded} deleteNode={data.functions.deleteNode} next_node_index={data.next_node_index} addNewNode={data.functions.addNewNode}/>
           {isExpanded &&   
-            <Box p='0 15px 15px 15px'> 
-            <Flex gap='15px' alignItems={'center'} > 
-              <Flex justifyContent={'center'} bg='brand.gradient_blue' alignItems={'center'} p='7px' borderRadius={'.5rem'}> 
-                <Icon color='white' boxSize={'15px'} as={IoCheckmarkCircleSharp}/>
+            <Box p='0 15px 15px 15px' cursor={'pointer'} onClick={() => data.functions.setShowNodesAction({nodeId:id, actionType:'function', actionData:{}})}> 
+              <Flex gap='15px' alignItems={'center'} > 
+                <Flex justifyContent={'center'} bg='brand.gradient_blue' alignItems={'center'} p='7px' borderRadius={'.5rem'}> 
+                  <Icon color='white' boxSize={'15px'} as={FaCode}/>
+                </Flex>
+                <Text fontWeight={'medium'} >{t('Function')}</Text>
               </Flex>
-              <Text fontWeight={'medium'} >{t('End')}</Text>
-            </Flex>
+              <Text mt='20px' fontSize='.7em' color='gray.600' fontWeight={'medium'} >{t('FunctionToRun')}:</Text>
+              <Text fontSize={data.uuid === ''?'.8em':'.9em'} fontWeight={data.uuid === ''?'normal':'medium'}>{data.uuid === ''?t('NoFunction'):data.functions.functionsDict[data.uuid]}</Text>
+              
+              {data.uuid !== '' && <>
+                <Text  mt='10px' color='gray.600' fontSize={'.7em'} fontWeight={'medium'}>{t('VariableArgs')}</Text>
+                {Object.keys(data.variable_args).map((keyToEdit, index) => (
+                    <Fragment key={`variable-arg-${index}`}> 
+                        <Text fontSize={'.7em'}  whiteSpace={'nowrap'} textOverflow={'ellipsis'} overflow={'hidden'} flex='1' fontWeight={'medium'} >{keyToEdit}</Text>
+                    </Fragment>
+                ))}  
+                <Text mt='10px' color='gray.600' fontSize={'.7em'} fontWeight={'medium'}>{t('StructureArgs')}</Text>
+                {Object.keys(data.motherstructure_args).map((keyToEdit, index) => (
+                    <Fragment key={`motherstructure-arg-${index}`}> 
+                        <Text fontSize={'.7em'}  whiteSpace={'nowrap'} textOverflow={'ellipsis'} overflow={'hidden'} flex='1' fontWeight={'medium'} >{keyToEdit}</Text>
+                    </Fragment>
+                ))}   
+                <Text  mt='10px'  color='gray.600' fontSize={'.7em'} fontWeight={'medium'}>{t('HarcodedArgs')}</Text>
+                {Object.keys(data.hardcoded_args).map((keyToEdit, index) => (
+                    <Fragment key={`harcoded-arg-${index}`}> 
+                        <Text fontSize={'.7em'}  whiteSpace={'nowrap'} textOverflow={'ellipsis'} overflow={'hidden'} flex='1' fontWeight={'medium'} >{keyToEdit}</Text>
+                    </Fragment>
+                ))}  
+                <Text  mt='10px'  color='gray.600' fontSize={'.7em'} fontWeight={'medium'}>{t('OutputArgs')}</Text>
+                {Object.keys(data.output_to_variables).map((keyToEdit, index) => (
+                    <Fragment key={`output-arg-${index}`}> 
+                        <Text fontSize={'.7em'}  whiteSpace={'nowrap'} textOverflow={'ellipsis'} overflow={'hidden'} flex='1' fontWeight={'medium'} >{keyToEdit}</Text>
+                    </Fragment>
+                ))} 
+                <Text  mt='10px' color='gray.600' fontSize={'.7em'} fontWeight={'medium'}>{t('ErrorNodes')}</Text>
+                {Object.keys(data.error_nodes_ids).map((keyToEdit, index) => (
+                    <Fragment key={`error-${index}`}> 
+                      <NumberInput value={keyToEdit} onChange={(value) => setValue(inputType === 'float'?value:String(parseInt(value))) } min={1} max={1000000} clampValueOnBlur={false} >
+                          <NumberInputField borderRadius='.5rem'  fontSize={'.9em'} height={'37px'}  borderColor={'gray.300'} _hover={{ border:'1px solid #CBD5E0'}} _focus={{ px:'11px', borderColor: "rgb(77, 144, 254)", borderWidth: "2px" }} px='12px' />
+                      </NumberInput>    
+                  </Fragment>
+                ))} 
+                
+            </>}
+
           </Box>}
       </Box>
       <Handle position={Position.Left} type='target' style={{position:'absolute', top:'30px', visibility:'hidden'}} />
+      <Handle position={Position.Right} type='source' style={{visibility:'hidden', top:'30px', position:'absolute'}} />
+
     </>)
 }
 
@@ -488,24 +538,101 @@ export const MotherStructureUpdateNode = ({id, data}:{id:string, data:MotherStru
 
   //TRANSLATION
   const { t } = useTranslation('flows')
+  const auth = useAuth()
 
   //BOOLEAN FOR TOGGING THE NODE VISIBILITY
   const [isExpanded, setIsExpanded] = useState<boolean>(true)
 
+  //COMPONENT FOR EACH ACTION
+  const ActionComponent = ({action, index}:{action:FieldAction, index:number}) => {
+
+ 
+    //GET THE CORRECTED MAPPED VALUE
+    const getActionValue = (name:string, value:any) =>  {
+      switch (name) {
+        case 'user_id':{
+          let usersDict:{[key:number]:string} = {}
+          if (auth?.authData.users) Object.keys(auth.authData?.users).map((key:any) => {if (auth?.authData?.users) usersDict[key] = auth?.authData?.users[key].name})
+          usersDict[0] = t('NoAgent')
+          usersDict[-1] = 'Matilda'
+          return usersDict[value] || ''
+        }
+        case 'group_id':
+          {
+              return ''
+          }
+        case 'channel_type': {
+          const channelsMap = {'email':t('email'), 'whatsapp':t('whatsapp'), 'instagram':t('instagram'), 'webchat':t('webchat'), 'google_business':t('google_business'), 'phone':t('phone')}
+          return value in channelsMap? channelsMap[value as keyof typeof channelsMap] : 'whatsapp'
+        }
+        case 'urgency_rating': {
+          const ratingMapDic = {0:`${t('Priority_0')} (0)`, 1:`${t('Priority_1')} (1)`, 2:`${t('Priority_2')} (2)`, 3:`${t('Priority_3')} (3)`, 4:`${t('Priority_4')} (4)`}
+          return value in ratingMapDic? ratingMapDic[value as keyof typeof ratingMapDic] : 0
+        }
+        case 'status': {
+          const statusMapDic = {'new':t('new'), 'open':t('open'), solved:t('solved'), 'pending':t('pending'), 'closed':t('closed')}
+          return value in statusMapDic? statusMapDic[value as keyof typeof statusMapDic] : ''
+        }
+        case 'is_matilda_engaged':
+        case 'unseen_changes':
+        case 'is_satisfaction_offered':
+        {
+          const boolDict = {"True":t('true'), "False":t('false')}
+          return value in boolDict? boolDict[value as keyof typeof boolDict] : 'True'
+        }
+        case 'language': {
+          let languagesMap:any = {}
+          for (const key in languagesFlags) {
+              if (languagesFlags.hasOwnProperty(key)) {
+                  const values = languagesFlags[key]
+                  languagesMap[key] = values[0]
+              }
+          }
+          return languagesMap[value]
+        }
+
+        default: return value
+      }
+    }
+
+    //BOOLEAN FOR SHOWING THE DELETE BOX
+    const [isHovering, setIsHovering] = useState<boolean>(false)
+
+    //FRONT
+    return(
+      <Box position='relative' onMouseEnter={() => setIsHovering(true)} onMouseLeave={() => setIsHovering(false)}> 
+        <Box cursor={'pointer'}  mt='15px' boxShadow={'0 0 5px 1px rgba(0, 0, 0, 0.15)'}p='10px' borderRadius={'.3rem'} borderTopColor={'black'} borderTopWidth='3px' key={`variable-${index}`} onClick={() => data.functions.setShowNodesAction({nodeId:id, actionType:'edit_fields', actionData:{index}})}>
+          <Text fontSize='.7em' ><span style={{fontWeight:500}}>{t('Structure')}:</span> {t(action.motherstructure)}</Text>
+          <Text fontSize='.8em'> {t(action.op) + ' ' + t(action.name).toLocaleLowerCase() + ' ' + t(`${action.op}_2`) + getActionValue(action.name, action.value)}</Text>
+        </Box>
+        {(isHovering) && 
+          <Flex alignItems={'center'} position={'absolute'} borderRadius={'full'} p='3px' top={'-7px'} zIndex={100} bg='white' boxShadow={'0 0 5px 1px rgba(0, 0, 0, 0.15)'} right={'-7px'} justifyContent={'center'} cursor={'pointer'} onClick={() => data.functions.editFieldAction(id, index, 'remove')}>
+            <Icon boxSize={'10px'} as={BsTrash3Fill} color='red'/>
+          </Flex>}
+      </Box>
+    )
+  }
+
+  //FRONT
   return (<> 
       <Box cursor={'default'} bg="gray.50" borderRadius={'.5rem'} borderColor='gray.300' borderWidth={'1px'} width='250px'>
-          <NodeHeader nodeId={id} nodeType='brancher' isExpanded={isExpanded} setIsExpanded={setIsExpanded} deleteNode={data.functions.deleteNode}/>
+          <NodeHeader nodeId={id} nodeType='motherstructure_updates' isExpanded={isExpanded} next_node_index={data.next_node_index} setIsExpanded={setIsExpanded} addNewNode={data.functions.addNewNode} deleteNode={data.functions.deleteNode}/>
           {isExpanded &&   
             <Box p='0 15px 15px 15px'> 
-            <Flex gap='15px' alignItems={'center'} > 
-              <Flex justifyContent={'center'} bg='brand.gradient_blue' alignItems={'center'} p='7px' borderRadius={'.5rem'}> 
-                <Icon color='white' boxSize={'15px'} as={IoCheckmarkCircleSharp}/>
+              <Flex gap='15px' alignItems={'center'} > 
+                <Flex justifyContent={'center'} bg='brand.gradient_blue' alignItems={'center'} p='7px' borderRadius={'.5rem'}> 
+                  <Icon color='white' boxSize={'15px'} as={FaTicket}/>
+                </Flex>
+                <Text fontWeight={'medium'} >{t('Ticket')}</Text>
               </Flex>
-              <Text fontWeight={'medium'} >{t('End')}</Text>
-            </Flex>
-          </Box>}
+               {data.updates.map((action, index) => (
+                <ActionComponent action={action} key={`action-${index}`} index={index}/>
+              ))}
+              <Button mt='15px' leftIcon={<FaPlus/>} size='sm' width={'100%'} onClick={() => data.functions.editFieldAction(id, -1, 'add')}>{t('AddAction')}</Button>
+            </Box>}
       </Box>
       <Handle position={Position.Left} type='target' style={{position:'absolute', top:'30px', visibility:'hidden'}} />
+      <Handle position={Position.Right} type='source' style={{visibility:'hidden', top:'30px', position:'absolute'}} />
     </>)
 }
 
@@ -532,15 +659,15 @@ const NodesBox = ({disabledNodes, sourceData, addNewNode, clickFunc }:{disabledN
       <MotionBox initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}    exit={{ opacity: 0, scale: 0.95 }}  transition={{ duration: 0.1,  ease: [0.0, 0.9, 0.9, 1.0],   opacity: {duration: 0.1 }, scale: {duration: 0.1,  ease: [0.0, 0.9, 0.9, 1.0]}}}
       style={{ transformOrigin: 'bottom left' }} textAlign={'start'} minW={'180px'}  maxH='45vh' overflowY={'scroll'} bg='white' p='15px' zIndex={1000} boxShadow='0 0 10px 1px rgba(0, 0, 0, 0.15)' borderColor='gray.300' borderWidth='1px' borderRadius='.5rem'>
           <Grid templateColumns="repeat(1, 1fr)" autoRows="min-content">
-            {nodesList.map((node, index) => (<> 
+            {nodesList.map((node, index) => (<Fragment key={`node-type-${index}`}> 
               
-              {(!disabledNodes.includes(index)) && <Flex key={`node-type-${index}`} _hover={{bg:'brand.hover_gray'}} borderRadius={'.5rem'} p='5px' cursor={'pointer'}  alignItems={'center'} gap='10px' onClick={() => {addNewNode(sourceData, node.node_match);if (clickFunc) clickFunc()}}>
+              {(!disabledNodes.includes(index)) && <Flex   _hover={{bg:'brand.hover_gray'}} borderRadius={'.5rem'} p='5px' cursor={'pointer'}  alignItems={'center'} gap='10px' onClick={() => {addNewNode(sourceData, node.node_match);if (clickFunc) clickFunc()}}>
                   <Flex borderRadius={'.5rem'} bg={node.node_match === 'brancher'?'yellow.400':node.node_match === 'extractor'?'red.400':'brand.gradient_blue'} color='white' justifyContent={'center'} alignItems={'center'} p={'6px'}>
                       <Icon transform={node.node_match === 'brancher'?'rotate(90deg)':''} boxSize={'12px'} as={node.icon}/>
                   </Flex>
                   <Text fontSize={'.8em'} >{node.name}</Text>
               </Flex>}
-            </>))}
+            </Fragment>))}
         </Grid>
       </MotionBox>
     </AnimatePresence>
@@ -575,9 +702,6 @@ const NodeHeader = ({nodeId, nodeType, isExpanded, setIsExpanded, deleteNode, ad
       return () => clearTimeout(timer)
   }, [isExpanded, nodeId])
 
-  
- 
-
   return (<> 
       <Flex position={'relative'} p='15px' alignItems={'center'} color='gray.600' justifyContent={'space-between'} onMouseEnter={() => setIsHovering(true)} onMouseLeave={() => setIsHovering(false)}> 
         
@@ -589,7 +713,7 @@ const NodeHeader = ({nodeId, nodeType, isExpanded, setIsExpanded, deleteNode, ad
           <AnimatePresence> 
             {showDelete && 
               <MotionBox initial={{ opacity: 0, marginTop: -10 }} animate={{ opacity: 1, marginTop: 0 }}  exit={{ opacity: 0,marginTop: -10}} transition={{ duration: 0.2,  ease: [0.0, 0.9, 0.9, 1.0], opacity: {duration: 0.2,  ease: [0.0, 0.9, 0.9, 1.0]}}}
-                maxH='40vh' p='10px' overflow={'scroll'} gap='10px' ref={boxRef} boxShadow={'0px 0px 10px rgba(0, 0, 0, 0.2)'} bg='gray.50' zIndex={100000}   position={'absolute'} borderRadius={'.3rem'} >
+                maxH='40vh' p='7px' overflow={'scroll'} gap='10px' ref={boxRef} boxShadow={'0px 0px 10px rgba(0, 0, 0, 0.2)'} bg='gray.50' zIndex={100000}   position={'absolute'} borderRadius={'.3rem'} >
                 <Flex color='black'  fontSize={'.9em'}  _hover={{bg:'gray.200'}} borderRadius={'.5rem'} p='5px' cursor={'pointer'}  alignItems={'center'} gap='10px' onClick={() => deleteNode(nodeId)}>
                     <Icon as={BsTrash3Fill}/>
                     <Text whiteSpace={'nowrap'} >{t('DeleteNode')}</Text>

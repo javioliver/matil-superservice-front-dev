@@ -38,7 +38,7 @@ const Shortcuts = lazy(() => import('./User/Shortcuts'))
 const Fields = lazy(() => import('./Rules/Fields'))
 //const Triggers = lazy(() => import('./Organization/Triggers'))
 //const Automatizations = lazy(() => import('./Organization/Automatizations'))
-//const Functions = lazy(() => import('./Organization/Functions'))
+const Functions = lazy(() => import('./Rules/Functions'))
 //CHANNELS
 const Chatbot = lazy(() => import('./Channels/Chatbot'))
 const Google = lazy(() => import('./Channels/Google'))
@@ -156,6 +156,8 @@ function Settings () {
                         <Route path="/user/shortcuts" element={<Shortcuts/>} />
 
                         <Route path="/rules-fields/fields" element={<Fields/>} />
+                        <Route path="/rules-fields/functions" element={<Functions/>} />
+
 
                         <Route path="/channels/web" element={<Chatbot />} />
                         <Route path="/channels/whatsapp" element={<Whatsapp />} />
