@@ -27,35 +27,21 @@ import { CustomEdge } from './CustomNodes'
 import EditText from '../../Components/EditText.js'
 import CustomSelect from '../../Components/CustomSelect.js'
 import LoadingIconButton from '../../Components/LoadingIconButton.js'
+import ConfirmBox from '../../Components/ConfirmBox.js'
 //FUNCTIONS
 import useOutsideClick from '../../Functions/clickOutside.js'
 import determineBoxStyle from '../../Functions/determineBoxStyle.js'
 //ICONS
 import { RxCross2 } from 'react-icons/rx'
 import { FaPlus, FaBuilding } from 'react-icons/fa'
-import { IoIosArrowDown } from 'react-icons/io'
+import { IoIosArrowDown, IoIosWarning } from 'react-icons/io'
 import { BsTrash3Fill } from 'react-icons/bs'
 //TYPING
 import { languagesFlags, Channels, actionTypesDefinition, nodeTypesDefinition, DataTypes, Branch, FlowMessage, FieldAction, ContactBusinessesTable, FunctionType } from '../../Constants/typing.js'
-import ConfirmBox from '../../Components/ConfirmBox.js'
-
+ 
 //FLOWS AND NODES DEFINITIONS
 const panOnDrag = [1, 2]
-const nodeTypes = {
-    trigger: FirstNode,
-    add:AddNode,
-    brancher:BrancherNode,
-    extractor:ExtactorNode,
-    sender: SenderNode,
-    terminator:TerminatorNode,
-    transfer: TransferNode,
-    reset: ResetNode,
-    flow_swap:FlowSwapNode,
-    function: FunctionNode,
-    motherstructure_updates: MotherStructureUpdateNode
-}
-const edgeTypes = { custom: CustomEdge }
-
+ 
 //VARIABLE TYPES
 type VariableType = {name:string, type:DataTypes, description:string, examples:any[], values:any[], ask_for_confirmation:boolean}
 
@@ -64,6 +50,22 @@ const MotionBox = motion(Box)
 
 //MAIN FUNCTION
 const Flow = () => {
+
+    const nodeTypes = useMemo(() => ({
+        trigger: FirstNode,
+        add: AddNode,
+        brancher: BrancherNode,
+        extractor: ExtactorNode,
+        sender: SenderNode,
+        terminator: TerminatorNode,
+        transfer: TransferNode,
+        reset: ResetNode,
+        flow_swap: FlowSwapNode,
+        function: FunctionNode,
+        motherstructure_updates: MotherStructureUpdateNode
+    }), [])
+
+    const edgeTypes = useMemo(() => ({custom: CustomEdge}), [])
 
     //TRANSLATION
     const { t } = useTranslation('flows')
@@ -120,19 +122,18 @@ const Flow = () => {
     //PARSE NODE DATA FROM BACK TO USE IN THE APP
     const parseNodesFromBack = (nodesBack: Array<{id:string, type: nodeTypesDefinition; [key: string]: any }>) => {
         
-
         const getNewNodeObject = (node: {id: string, type: nodeTypesDefinition, [key: string]: any }) => {
             const getNodeFunctions = (type:nodeTypesDefinition) => {
                 switch (type) {
-                    case 'brancher': return  {setShowNodesAction, editBranch, addNewNode, deleteNode}
-                    case 'extractor': return {setShowNodesAction, editBranch, editExtractor, addNewNode, deleteNode}
-                    case 'sender': return {setShowNodesAction, editMessage, addNewNode, deleteNode}
+                    case 'brancher': return  {setShowNodesAction, editBranch, addNewNode, deleteNode, getAvailableNodes}
+                    case 'extractor': return {setShowNodesAction, editBranch, editExtractor, addNewNode, deleteNode, getAvailableNodes}
+                    case 'sender': return {setShowNodesAction, editMessage, addNewNode, deleteNode, getAvailableNodes}
                     case 'terminator': return {setShowNodesAction, editMessage, deleteNode}
                     case 'transfer': return {setShowNodesAction, editMessage, editSimpleFlowData, deleteNode}
-                    case 'reset': return {setShowNodesAction, editMessage, deleteNode}
+                    case 'reset': return {setShowNodesAction, editMessage, deleteNode, getAvailableNodes}
                     case 'flow_swap': return {flowsIds:[], setShowNodesAction, editMessage, addNewNode, deleteNode}
-                    case 'function': return {functionsDict:functionsNameMap.current, setShowNodesAction, editMessage, addNewNode, deleteNode}
-                    case 'motherstructure_updates': return {setShowNodesAction, editFieldAction, addNewNode, deleteNode}
+                    case 'function': return {functionsDict:functionsNameMap.current, setShowNodesAction, editSimpleFlowData, addNewNode, deleteNode, getAvailableNodes}
+                    case 'motherstructure_updates': return {setShowNodesAction, editFieldAction, addNewNode, deleteNode, getAvailableNodes}
 
                     default:{}
                 }
@@ -144,6 +145,27 @@ const Flow = () => {
         const finalNodes = nodesBack.map(node => {return getNewNodeObject(node)})
 
         return finalNodes
+    }
+
+    //GET THE AVAILABLE NODES WHEN ADDING A NEW ONE
+    const getAvailableNodes = (sourceData:{sourceId:string, sourceType:nodeTypesDefinition, branchIndex?:number}) => {
+
+        let availableNodes:string[] = []
+        setNodes((nds) => {
+            const [sourceX] = sourceData.sourceId.split('-').map(Number);
+            const nextColumnNodes = nds.filter(node => {
+                const [x] = node.id.split('-').map(Number)
+                return x === sourceX + 1
+            }).map((node, index) => {return node.id})
+
+            if (sourceData.sourceId === 'reset') {
+                const extractorNodes = nds.filter(node => node.type === 'extractor').map((node, index) => {return node.id})
+                availableNodes = [...nextColumnNodes, ...extractorNodes]
+            }
+            else availableNodes = nextColumnNodes
+            return nds
+        })
+        return availableNodes
     }
 
     //EDIT THE CHANNELS OF THE FLOW
@@ -158,7 +180,7 @@ const Flow = () => {
     }
 
     //ADD AND DELETE NEW NODES FUNCTIONS
-    const addNewNode = (sourceData:{sourceId:string, sourceType:nodeTypesDefinition, branchIndex?:number}, targetType:nodeTypesDefinition) => {
+    const addNewNode = (sourceData:{sourceId:string, sourceType:nodeTypesDefinition, branchIndex?:number}, targetType:nodeTypesDefinition | '', nodeId?:string) => {
    
         const getNewNodeId = (id:string, nds:{id:string, position:{x:number, y:number}, data:any}[]) => {
             const newNodeX = parseInt(id.split('-')[0]) + 1
@@ -189,22 +211,22 @@ const Flow = () => {
             const position = { x, y }
             
             let newNodeObjectData = {}
-            if (type === 'brancher') newNodeObjectData = {branches:[{name:'',conditions:[], next_node_index:null}], functions:{setShowNodesAction, editBranch, addNewNode, deleteNode}}
-            else if (type === 'extractor') newNodeObjectData = {branches:[], variables:[], functions:{flowVariables:flowVariablesRef.current, setShowNodesAction, editBranch, editExtractor, addNewNode, deleteNode}}
-            else if (type === 'sender') newNodeObjectData =  {next_node_index:null, messages:[{type:'generative', generation_instructions:'', preespecified_messages:{}}], functions:{setShowNodesAction, editMessage, addNewNode, deleteNode}}
+            if (type === 'brancher') newNodeObjectData = {branches:[{name:'',conditions:[], next_node_index:null}], functions:{setShowNodesAction, editBranch, addNewNode, deleteNode, getAvailableNodes}}
+            else if (type === 'extractor') newNodeObjectData = {branches:[], variables:[], functions:{flowVariables:flowVariablesRef.current, setShowNodesAction, editBranch, editExtractor, addNewNode, deleteNode, getAvailableNodes}}
+            else if (type === 'sender') newNodeObjectData =  {next_node_index:null, messages:[{type:'generative', generation_instructions:'', preespecified_messages:{}}], functions:{setShowNodesAction, editMessage, addNewNode, deleteNode, getAvailableNodes}}
             else if (type === 'terminator') newNodeObjectData = {flow_result:'', messages:[{type:'generative', generation_instructions:'', preespecified_messages:{}}], functions:{setShowNodesAction, editMessage, deleteNode}}
             else if (type === 'transfer') newNodeObjectData = {user_id:0, group_id:0, messages:[{type:'generative', generation_instructions:'', preespecified_messages:{}}], functions:{setShowNodesAction, editMessage, editSimpleFlowData, deleteNode}}
-            else if (type === 'reset') newNodeObjectData = {messages:[{type:'generative', generation_instructions:'', preespecified_messages:{}}], functions:{setShowNodesAction, editMessage, deleteNode}}
+            else if (type === 'reset') newNodeObjectData = {messages:[{type:'generative', generation_instructions:'', preespecified_messages:{}}], functions:{setShowNodesAction, editMessage, deleteNode, getAvailableNodes}}
             else if (type === 'flow_swap') newNodeObjectData = {new_flow_uuid:'-1', messages:[{type:'generative', generation_instructions:'', preespecified_messages:{}}], functions:{flowsIds:[], setShowNodesAction, editMessage, addNewNode, deleteNode}}
-            else if (type === 'function') newNodeObjectData = {uuid:'', variable_args:{}, motherstructure_args:{}, hardcoded_args:{}, error_nodes_ids:{}, success_node_id:null, output_to_variables:{}, functions:{functionsDict:functionsNameMap.current,setShowNodesAction, editMessage, addNewNode, deleteNode}}
-            else if (type === 'motherstructure_updates') newNodeObjectData = {updates:[], next_node_index:null, functions:{setShowNodesAction, editFieldAction, addNewNode, deleteNode}}
+            else if (type === 'function') newNodeObjectData = {uuid:'', variable_args:{}, motherstructure_args:{}, hardcoded_args:{}, error_nodes_ids:{}, success_node_id:null, output_to_variables:{}, functions:{functionsDict:functionsNameMap.current, setShowNodesAction, editSimpleFlowData, addNewNode, deleteNode, getAvailableNodes}}
+            else if (type === 'motherstructure_updates') newNodeObjectData = {updates:[], next_node_index:null, functions:{setShowNodesAction, editFieldAction, addNewNode, deleteNode, getAvailableNodes}}
 
             return {id, position, data: newNodeObjectData, type:targetType}
         }
 
         if (sourceData.sourceType === 'add') {
             setNodes((nds) => {
-                    const newNodeObject = getNewNodeObject('1-0-1', targetType, nds)
+                    const newNodeObject = getNewNodeObject('1-0-1', targetType as nodeTypesDefinition, nds)
                     return nds.map((node) => {
                         if (node.id !== '1') return node
                         return newNodeObject
@@ -218,21 +240,34 @@ const Flow = () => {
             setNodes((nds) => 
             {
                 newNodeId = getNewNodeId(sourceData.sourceId,nds)
-                if (sourceData.sourceType === 'brancher' || sourceData.sourceType === 'extractor' ) {
+                if (sourceData.sourceType === 'brancher' || sourceData.sourceType === 'extractor' || sourceData.sourceType === 'function' ) {
                     const nodeIndex = nds.findIndex(node => node.id === sourceData.sourceId)
                     if (nodeIndex !== -1) {
                         const nodeToUpdate = { ...nds[nodeIndex] }
 
-                        if (nodeToUpdate.data && Array.isArray(nodeToUpdate.data.branches)) {
-                            const updatedBranches = nodeToUpdate.data.branches.map((branch:any, index:number) => {
-                                if (index === sourceData.branchIndex) return {...branch, next_node_index: newNodeId}
-                                return branch
-                            })
-                            nodeToUpdate.data = {...nodeToUpdate.data, branches: updatedBranches}
+                        if (sourceData.sourceType === 'function') {
+                            if (nodeToUpdate.data.error_nodes_ids) {
+                                const updatedErrors = {...nodeToUpdate.data.error_nodes_ids}
+                                const keyToUpdate = Object.keys(updatedErrors)[sourceData?.branchIndex as number]
+                                if (keyToUpdate) {
+                                    updatedErrors[keyToUpdate] = newNodeId
+                                    nodeToUpdate.data = { ...nodeToUpdate.data, error_nodes_ids: updatedErrors };
+                                }
+                            }
+                        }
+                        else {
+                            if (nodeToUpdate.data && Array.isArray(nodeToUpdate.data.branches)) {
+                                const updatedBranches = nodeToUpdate.data.branches.map((branch:any, index:number) => {
+                                    if (index === sourceData.branchIndex) return {...branch, next_node_index: newNodeId}
+                                    return branch
+                                })
+                                nodeToUpdate.data = {...nodeToUpdate.data, branches: updatedBranches}
+                            }
                         }
                         const updatedNodes = nds.map((node, index) => index === nodeIndex ? nodeToUpdate : node)
-                       
-                        return [...updatedNodes, getNewNodeObject(newNodeId, targetType, nds)]
+                        
+                        if (nodeId) return updatedNodes
+                        else return [...updatedNodes, getNewNodeObject(newNodeId, targetType as nodeTypesDefinition, nds)]
                     }
                 }
                 else {
@@ -240,15 +275,39 @@ const Flow = () => {
                     if (nodeIndex !== -1) {
                         const nodeToUpdate = { ...nds[nodeIndex], data:{...nds[nodeIndex].data, next_node_index:newNodeId} }
                         const updatedNodes = nds.map((node, index) => index === nodeIndex ? nodeToUpdate : node)
-                        return [...updatedNodes, getNewNodeObject(newNodeId, targetType, nds)]
+                        return [...updatedNodes, getNewNodeObject(newNodeId, targetType as nodeTypesDefinition, nds)]
                     }
                 }
-                return [...nds, getNewNodeObject(newNodeId, targetType, nds)]
+                if (nodeId) return nds
+                else return [...nds, getNewNodeObject(newNodeId, targetType as nodeTypesDefinition, nds)]
             })
-            setEdges((edges) => [...edges,  {id:`${sourceData.sourceId}->${newNodeId}`,sourceHandle:(sourceData?.branchIndex !== undefined)?`handle-${sourceData.branchIndex}`:'', type:'custom', source:sourceData.sourceId, target:newNodeId}])
+
+            setEdges((edges) => [...edges,  {id:`${sourceData.sourceId}->${nodeId?nodeId:newNodeId}(${sourceData?.branchIndex === undefined?'-1':sourceData?.branchIndex})`,sourceHandle:(sourceData?.branchIndex !== undefined)?`handle-${sourceData.branchIndex}`:'', type:'custom', source:sourceData.sourceId, target:nodeId?nodeId:newNodeId}])
         }
     }
     const deleteNode = (sourceId:string, resize?:boolean, delete_branch?:boolean) => {
+        
+        const resizeNodes = (nds:any[]) => {
+            const [columnIndex] = sourceId.split('-').map(Number)
+            let updatedNodes = nds.map((node) => {
+                const [nodeColIndex] = node.id.split('-').map(Number)
+                if (nodeColIndex === columnIndex) return { ...node, position: { ...node.position, y: 0 } }
+                return node
+            })
+
+            let currentY = 0
+            updatedNodes = updatedNodes.map((node) => {
+                const [nodeColIndex, nodeRowIndex] = node.id.split('-').map(Number)
+                if (nodeColIndex === columnIndex) {
+                    const newPosition = { x: nodeColIndex * 350, y: currentY }
+                    currentY += (node?.height || 0) + 30
+                    return {...node, position: newPosition}
+                }
+                return node
+            })
+            return updatedNodes
+        }
+
         setNodes((nds) => 
             {   
                 if (delete_branch) {
@@ -265,27 +324,9 @@ const Flow = () => {
                         return node
                     })
                 }
-                else if (resize) {
-                    const [columnIndex] = sourceId.split('-').map(Number)
-                    let updatedNodes = nds.map((node) => {
-                        const [nodeColIndex] = node.id.split('-').map(Number)
-                        if (nodeColIndex === columnIndex) return { ...node, position: { ...node.position, y: 0 } }
-                        return node
-                    })
 
-                    let currentY = 0
-                    updatedNodes = updatedNodes.map((node) => {
-                        const [nodeColIndex, nodeRowIndex] = node.id.split('-').map(Number)
-                        if (nodeColIndex === columnIndex) {
-                            const newPosition = { x: nodeColIndex * 350, y: currentY }
-                            currentY += (node?.height || 0) + 30
-                            return {...node, position: newPosition}
-                        }
-                        return node
-                    })
-                    return updatedNodes
-                }
-
+                else if (resize) return resizeNodes(nds)
+            
                 else if (nds.length === 2) 
                 {
                     setEdges([{ id: '0->1', type: 'custom', source: '0', target: '1' }])
@@ -296,25 +337,31 @@ const Flow = () => {
                     let sourceHandle:number = -1
 
                     setEdges((edg) => edg.filter((edge) => {
-                            const [edgeSource, edgeTarget] = edge.id.split('->')
+                            const edgeSource = edge.id.split('->')[0]
+                            const edgeTarget = edge.id.split('->')[1].split('(')[0]
                             sourceNode = edgeSource
-
                             if (edge.sourceHandle) {
-                                 if (edgeTarget === sourceId) sourceHandle = parseInt(edge.sourceHandle.split('-')[1])
-
+                                if (edgeTarget === sourceId) sourceHandle = parseInt(edge.sourceHandle.split('-')[1])
                                 return edgeTarget !== sourceId
                             }
                             return edgeSource !== sourceId && edgeTarget !== sourceId
-                        })
-                    )
+                    }))
 
                     let updatedNodes = nds.map((node) => {
                         if (node.id === sourceNode ) {
                             if (sourceHandle !== -1) {
-                                return {...node, data: {...node.data, branches: node.data.branches.map((branch: any, idx: number) => {
-                                            if (idx === sourceHandle) return { ...branch, next_node_index: null }
-                                            return branch
-                                        })
+                                if (node.type === 'function') {
+                                    const updatedErrors = { ...node.data.error_nodes_ids }
+                                    const keyToUpdate = Object.keys(updatedErrors)[sourceHandle]
+                                    if (keyToUpdate) updatedErrors[keyToUpdate] = null                                           
+                                    return {...node, data: {...node.data, error_nodes_ids:updatedErrors}}
+                                }
+                                else {
+                                    return {...node, data: {...node.data, branches: node.data.branches.map((branch: any, idx: number) => {
+                                                if (idx === sourceHandle) return { ...branch, next_node_index: null }
+                                                return branch
+                                            })
+                                        }
                                     }
                                 }
                             }
@@ -324,7 +371,7 @@ const Flow = () => {
                     })
                     updatedNodes = updatedNodes.filter((node) => node.id !== sourceId)
                     
-                    return updatedNodes
+                    return resizeNodes(updatedNodes)
                 }
              }
     )}
@@ -436,12 +483,14 @@ const Flow = () => {
 
     //EDIT SIMPLE FLOW DATA
     const editSimpleFlowData = (nodeId:string | undefined, keyToEdit:string, newData:any ) => {
+        
         setNodes((nds) => nds.map((node) => {
             if (node.id !== nodeId) return node
             return {...node, data: { ...node.data, [keyToEdit]: newData}}
         }))
     }
 
+    //EDIT FUNCTION DATA 
     const editFunctionFlowData = (nodeId:string | undefined, newData:any ) => {
         setNodes((nds) => nds.map((node) => {
             if (node.id !== nodeId) return node
@@ -449,13 +498,12 @@ const Flow = () => {
         }))
     }
 
-
     const findLastExtractor = (nodeId:string) => {
 
         let lastExtractorVariables: number[] = []
 
         function findPreviousNode(nodeId: string, nodes: any[], edges: Edge[]): string | null {
-            const edge = edges.find(e => e.id.split('->')[1] === nodeId);
+            const edge = edges.find(e => e.id.split('->')[1] === nodeId)
             if (!edge) return null
             const sourceNodeId = edge.id.split('->')[0]
             const sourceNode = nodes.find(n => n.id === sourceNodeId)
@@ -942,15 +990,52 @@ const Flow = () => {
          }
      </>), [showCreateVariable])
 
+    const WarningsComponent = () => {
+
+        //SHOW WARNINGS BOX LOGIC
+        const [showWarningBox, setShowWarningBox] = useState<boolean>(false)
+        const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+        const handleMouseEnter = () => {if (timeoutRef.current) clearTimeout(timeoutRef.current);setShowWarningBox(true)}
+        const handleMouseLeave = () => {timeoutRef.current = setTimeout(() => {setShowWarningBox(false)}, 100)}
+
+        const [endWarning, setEndWarning] = useState<{id:string, type:nodeTypesDefinition}[]>([{id:'3-4-3', type:'extractor'}])
+        const [aloneWarning, setAloneWarning] = useState<{id:string, type:nodeTypesDefinition}[]>([])
+        const [nodeWarning, setNodeWarning] = useState<{id:string, type:nodeTypesDefinition, warningData?:{branchIndex:number}}[]>([])
+
+        const numberOfWarnings = endWarning.length + aloneWarning.length + nodeWarning.length 
+        
+        return (<> 
+            {numberOfWarnings > 0 && 
+            <Flex position={'relative'} onMouseEnter={handleMouseEnter}  onMouseLeave={handleMouseLeave}  > 
+                <Box p='2px' bg='gray.100' position='absolute' borderRadius={'13px'}   bottom={'-7px'} left={'17px'}> 
+                    <Flex   justifyContent={'center'} alignItems={'center'} borderRadius={'11px'}  px='5px' height={'15px'}  color='white' bg='red'>
+                        <Text fontSize={'.6em'} fontWeight={'bold'}>{numberOfWarnings}</Text>
+                    </Flex>
+                </Box>
+                <Icon cursor={'pointer'} color='red' as={IoIosWarning} boxSize={'30px'}/>
+                <AnimatePresence> 
+                    {showWarningBox && (
+                    <MotionBox initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}  transition={{ duration: 0.1,  ease: [0.0, 0.9, 0.9, 1.0],   opacity: {duration: 0.1 }, scale: {duration: 0.1,  ease: [0.0, 0.9, 0.9, 1.0]}}}
+                    style={{ transformOrigin: 'top' }} width={'25vw'}  position='absolute' bg='white' right={0} p='15px' top='45px' zIndex={1000} boxShadow='0 0 10px 1px rgba(0, 0, 0, 0.15)' borderColor='gray.300' borderWidth='1px' borderRadius='.5rem' >
+                        {endWarning.map((war, index) => (
+                            <Flex key={`end-warning-${index}`}>
+                                <Text fontSize={'.8em'}>{t('EndWarning', {id:`${war.id.split('-')[2]}.`, type:war.type})}</Text>
+                            </Flex>
+                        ))} 
+                    </MotionBox>)}
+                </AnimatePresence>
+            </Flex>}
+        </>)
+    }
     //FRONT
     return (<>
-        <Flex height={'100vh'} width={'calc(100vw - 60px)'} flexDir={'column'} bg='white' backdropFilter='blur(1px)' >
+        <Flex height={'100vh'} justifyContent={'center'} alignItems={'center'} width={'calc(100vw - 60px)'} flexDir={'column'} bg='white' backdropFilter='blur(1px)' >
 
             {waiting ? <LoadingIconButton/> :
             <> 
-            <Box left={'2vw'} ref={nameInputRef} top='2vw' zIndex={100} position={'absolute'} boxShadow={'0px 0px 10px rgba(0, 0, 0, 0.1)'} maxH={'calc(100vh - 4vw)'} overflow={'scroll'} bg='white' borderRadius={'.5rem'} borderWidth={'1px'} borderColor={'gray.300'} > 
+            <Box left={'1vw'} ref={nameInputRef} top='1vw' zIndex={100} position={'absolute'} boxShadow={'0px 0px 10px rgba(0, 0, 0, 0.1)'} maxH={'calc(100vh - 2vw)'} overflow={'scroll'} bg='white' borderRadius={'.5rem'} borderWidth={'1px'} borderColor={'gray.300'} > 
                 <Flex gap='10px' alignItems={'center'} p='10px'> 
-                    <Box width={'400px'} > 
+                    <Box width={'300px'} > 
                         <EditText nameInput={true} hideInput={true} size='md' maxLength={70}  value={flowName} setValue={setFlowName}/>
                     </Box>
                     <Button leftIcon={<IoIosArrowDown className={!showMoreInfo ? "rotate-icon-up" : "rotate-icon-down"}/>} size='sm' bg='transparent' borderColor={'transparent'} borderWidth={'1px'} onClick={() => setShowMoreInfo(!showMoreInfo)}>{t('SeeMoreData')}</Button>
@@ -981,9 +1066,9 @@ const Flow = () => {
                         </Flex>
                     </Box>}
             </Box>
-       
 
             <Flex gap='15px'  position={'absolute'} right={'2vw'} top='2vw' zIndex={100}  >
+                <WarningsComponent/>
                 <Button size='sm' bg='transparent' borderColor={'gray.300'} borderWidth={'1px'}>{t('Test')}</Button>
                 <Button size='sm' bg='red.400' _hover={{bg:'red.500'}}  color='white'>{t('Close')}</Button>
                 <Button size='sm' bg='brand.gradient_blue' _hover={{bg:'brand.gradient_blue_hover'}} color='white'>{t('SaveChanges')}</Button>
@@ -991,7 +1076,7 @@ const Flow = () => {
 
 
             <Box width={'100%'} height={'100%'}bg='gray.100' ref={flowBoxRef} >   
-                <ReactFlow nodesDraggable={false} panOnScroll selectionOnDrag panOnDrag={panOnDrag} selectionMode={SelectionMode.Partial} defaultViewport={{ x: 100, y: 200, zoom: 1 }}   nodes={nodes} nodeTypes={nodeTypes}  edgeTypes={edgeTypes} onNodesChange={onNodesChange} edges={edges} onEdgesChange={onEdgesChange}>
+                <ReactFlow nodesDraggable={false} panOnScroll  panOnDrag={panOnDrag} selectionMode={SelectionMode.Partial} defaultViewport={{ x: 100, y: 200, zoom: 1 }}   nodes={nodes} nodeTypes={nodeTypes}  edgeTypes={edgeTypes} onNodesChange={onNodesChange} edges={edges} onEdgesChange={onEdgesChange}>
                     <Controls showFitView={false} showInteractive={false} position='bottom-right'>
                         <ControlButton onClick={() => alert('Something magical just happened. ✨')}>
                         </ControlButton>

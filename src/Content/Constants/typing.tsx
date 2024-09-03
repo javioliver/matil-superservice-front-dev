@@ -299,7 +299,7 @@ export type FunctionType = {
     variable_args:{[key:string]:number}
     motherstructure_args:{[key:string]:{motherstructure:'ticket' | 'client' | 'contact_business',is_customizable:boolean, name:string }}
     hardcoded_args:{[key:string]:string}
-    error_nodes_ids:{[key:number]:number}
+    error_nodes_ids:{[key:number]:number | null}
     next_node_index:string | null
     output_to_variables:{[key:string]:number}
 }
