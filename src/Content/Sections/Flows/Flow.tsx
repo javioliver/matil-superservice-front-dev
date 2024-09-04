@@ -1317,10 +1317,10 @@ const InputType = ({inputType, value, setValue}:{inputType:DataTypes,value:strin
         case 'bool':
             return <CustomSelect hide={false} selectedItem={value} setSelectedItem={(value) => setValue(value) }  options={Object.keys(boolDict)} labelsMap={boolDict}/>
         case 'int':
-        case 'float':
+        case 'float': return (
             <NumberInput value={value} onChange={(value) => setValue(inputType === 'float'?value:String(parseInt(value))) } min={1} max={1000000} clampValueOnBlur={false} >
                 <NumberInputField borderRadius='.5rem'  fontSize={'.9em'} height={'37px'}  borderColor={'gray.300'} _hover={{ border:'1px solid #CBD5E0'}} _focus={{ px:'11px', borderColor: "rgb(77, 144, 254)", borderWidth: "2px" }} px='12px' />
-            </NumberInput>                
+            </NumberInput>)           
         case 'str':
         case 'list':
                 return <EditText value={value} setValue={(value) => setValue(value) } hideInput={false} />
@@ -1474,11 +1474,10 @@ const VariableTypeComponent = ({inputType, value, setValue}:{inputType:string, v
             }
             return <CustomSelect labelsMap={languagesMap} selectedItem={value}  setSelectedItem={(value) => setValue(value)} options={Object.keys(languagesMap)} hide={false} />
         }
-
-        case 'rating':
+        case 'rating': return (
             <NumberInput value={value} onChange={(value) => setValue(value)} min={1} max={5} clampValueOnBlur={false} >
                 <NumberInputField borderRadius='.5rem'  fontSize={'.9em'} height={'37px'}  borderColor={'gray.300'} _hover={{ border:'1px solid #CBD5E0'}} _focus={{ px:'11px', borderColor: "rgb(77, 144, 254)", borderWidth: "2px" }} px='12px' />
-            </NumberInput>  
+            </NumberInput>)
         default: 
             return null
     }
