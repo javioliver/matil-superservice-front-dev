@@ -1,5 +1,5 @@
 //REACT
-import { useState, useEffect, useRef, RefObject, useMemo, CSSProperties, Dispatch, SetStateAction } from 'react'
+import { useState, useEffect, useRef, RefObject, useMemo, CSSProperties, Dispatch, SetStateAction, useLayoutEffect } from 'react'
 import { useAuth } from '../../../AuthContext.js'
 import { useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -9,7 +9,7 @@ import fetchData from '../../API/fetchData'
 import { Flex, Box, Button, IconButton, NumberInput, NumberInputField, Text, Textarea, Portal, Icon } from '@chakra-ui/react'
 import { motion, AnimatePresence } from 'framer-motion'
 //FLOWS
-import ReactFlow, { Controls, Background, useNodesState, useEdgesState, ControlButton, SelectionMode, Edge } from 'reactflow'
+import ReactFlow, { Controls, Background, useNodesState, useEdgesState, ControlButton, SelectionMode, Edge, useReactFlow } from 'reactflow'
 import 'reactflow/dist/style.css'
 import { FirstNode } from './CustomNodes'
 import { AddNode } from './CustomNodes'
@@ -66,6 +66,8 @@ const Flow = () => {
     }), [])
 
     const edgeTypes = useMemo(() => ({custom: CustomEdge}), [])
+
+    const { zoomIn, zoomOut, setCenter } = useReactFlow()
 
     //TRANSLATION
     const { t } = useTranslation('flows')
@@ -990,7 +992,11 @@ const Flow = () => {
          }
      </>), [showCreateVariable])
 
+    //WARNIGNS COMPONENT
     const WarningsComponent = () => {
+
+        //ICON REF
+        const iconRef = useRef<HTMLDivElement>(null)
 
         //SHOW WARNINGS BOX LOGIC
         const [showWarningBox, setShowWarningBox] = useState<boolean>(false)
@@ -998,30 +1004,121 @@ const Flow = () => {
         const handleMouseEnter = () => {if (timeoutRef.current) clearTimeout(timeoutRef.current);setShowWarningBox(true)}
         const handleMouseLeave = () => {timeoutRef.current = setTimeout(() => {setShowWarningBox(false)}, 100)}
 
-        const [endWarning, setEndWarning] = useState<{id:string, type:nodeTypesDefinition}[]>([{id:'3-4-3', type:'extractor'}])
-        const [aloneWarning, setAloneWarning] = useState<{id:string, type:nodeTypesDefinition}[]>([])
+        //WARNINGS TYPES
+        const [endWarning, setEndWarning] = useState<{id:string, type:nodeTypesDefinition}[]>([])
+        const [aloneWarning, setAloneWarning] = useState<string[]>([])
         const [nodeWarning, setNodeWarning] = useState<{id:string, type:nodeTypesDefinition, warningData?:{branchIndex:number}}[]>([])
 
+        //UPDATE DIFFERENT TYPES OF WARNINGS
+        useLayoutEffect(() => {
+            if (nodes[1].type !== 'add') {
+                const maxCol = Math.max(...nodes.map(node => parseInt(node.id.split('-')[0])))
+                const filteredNodes = nodes.filter(node => {
+                    const colIndex = parseInt(node.id.split('-')[0])
+                    return colIndex === maxCol
+                })
+                const result = filteredNodes.filter(node => !['terminator', 'transfer', 'flow_swap'].includes(node.type as nodeTypesDefinition)).map(node => ({ id: node.id, type: node.type as nodeTypesDefinition}))
+                setEndWarning(result)
+            }
+        }, [nodes.length])
+        useLayoutEffect(() => {
+            if (nodes[1].type !== 'add') {
+                const targetIds = new Set(edges.map(edge => edge.target))
+                const isolatedNodes = nodes.filter(node => node.id !== '0' && !targetIds.has(node.id)).map(node => node.id)
+                setAloneWarning(isolatedNodes)
+            }
+        }, [edges, nodes])
+        useLayoutEffect(() => {
+            let customNodesWarnings:{id:string, type:nodeTypesDefinition, warningData?:{branchIndex:number}}[] = []
+            nodes.map((node) => {
+                if (node.type === 'brancher' || node.type === 'extractor') {
+                    if (flowVariables.length === 0) customNodesWarnings.push({id:node.id, type:node.type as nodeTypesDefinition})
+                    node.data.branches.map((branch:Branch, index:number) => {
+                        if (branch.conditions.length === 0) customNodesWarnings.push({id:node.id, type:node.type as nodeTypesDefinition, warningData:{branchIndex:index}})
+                    })
+                }
+                else if (node.type === 'transfer' && node.data.group_id === null && node.data.user_id === null) customNodesWarnings.push({id:node.id, type:node.type as nodeTypesDefinition})
+                else if (node.type === 'reset' && flowVariables.length === 0) customNodesWarnings.push({id:node.id, type:node.type as nodeTypesDefinition})
+                else if (node.type === 'flow_swap' && node.data.new_flow_uuid === null) customNodesWarnings.push({id:node.id, type:node.type as nodeTypesDefinition})
+                else if (node.type === 'function' && node.data.uuid === null) customNodesWarnings.push({id:node.id, type:node.type as nodeTypesDefinition})
+            })
+            setNodeWarning(customNodesWarnings)
+        }, [nodes, flowVariables.length])
+
+        //ACTION ON CLICKNG A WARNING
+        const clickWarning = (type:'navigate' | 'open-variables', nodeId?:string) => {
+            if (type === 'navigate') {
+                setShowWarningBox(false)
+                if (nodes.length > 0) {
+                    const node = nodes.find(node => node.id === nodeId)
+                    if (node) {
+                        const x = node.position.x + (node?.width || 0) / 2;
+                        const y = node.position.y + (node?.height || 0) / 2;
+                        setCenter(x, y, { zoom:1.5, duration: 500 })
+                    }
+                }
+             }
+            else if (type === 'open-variables') {setShowMoreInfo(true);setShowWarningBox(false)}
+
+        }
+
+        //OBTAIN THE TEXT MESSAGE OF EACH NODE WARNING
+        const nodesWarningsTypes = (warningObject:{id:string, type:nodeTypesDefinition, warningData?:{branchIndex:number}}) => {
+
+            const nodeId = warningObject.id.split('-')[2]
+            switch (warningObject.type) {
+                case 'brancher':
+                case 'extractor': {
+                    if (warningObject.warningData === undefined) return t('NoVariablesWarning', {id:nodeId})
+                    else return t('BranchesWarning',  {id:nodeId, index:warningObject.warningData.branchIndex})
+                }
+                case 'transfer':
+                    return t('NoTransferWarning', {id:nodeId})
+                case 'reset':
+                    return t('NoVariablesResetWarning', {id:nodeId})
+                case 'flow_swap':
+                    return t('NoFlowWarning', {id:nodeId})
+                case 'transfer':
+                    return t('NoTransferWarning', {id:nodeId})
+                default: return ''
+            }
+        }
+
+        //TOTAL NUMBER OF WARNINGS
         const numberOfWarnings = endWarning.length + aloneWarning.length + nodeWarning.length 
-        
+
+
         return (<> 
             {numberOfWarnings > 0 && 
-            <Flex position={'relative'} onMouseEnter={handleMouseEnter}  onMouseLeave={handleMouseLeave}  > 
-                <Box p='2px' bg='gray.100' position='absolute' borderRadius={'13px'}   bottom={'-7px'} left={'17px'}> 
+            <Flex position={'relative'} onMouseEnter={handleMouseEnter}  onMouseLeave={handleMouseLeave}  >   
+                <Box p='2px' ref={iconRef} bg='gray.100' position='absolute' borderRadius={'13px'}   bottom={'-7px'} left={'17px'}> 
                     <Flex   justifyContent={'center'} alignItems={'center'} borderRadius={'11px'}  px='5px' height={'15px'}  color='white' bg='red'>
                         <Text fontSize={'.6em'} fontWeight={'bold'}>{numberOfWarnings}</Text>
                     </Flex>
                 </Box>
                 <Icon cursor={'pointer'} color='red' as={IoIosWarning} boxSize={'30px'}/>
+                
                 <AnimatePresence> 
                     {showWarningBox && (
                     <MotionBox initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}  transition={{ duration: 0.1,  ease: [0.0, 0.9, 0.9, 1.0],   opacity: {duration: 0.1 }, scale: {duration: 0.1,  ease: [0.0, 0.9, 0.9, 1.0]}}}
-                    style={{ transformOrigin: 'top' }} width={'25vw'}  position='absolute' bg='white' right={0} p='15px' top='45px' zIndex={1000} boxShadow='0 0 10px 1px rgba(0, 0, 0, 0.15)' borderColor='gray.300' borderWidth='1px' borderRadius='.5rem' >
+                    style={{ transformOrigin: 'top' }} width={`${window.innerWidth * 0.98 - (iconRef.current?.getBoundingClientRect().left || 0)}px`} maxH={'calc(100vh - 4vw - 45px)'} overflow={'scroll'}  position='absolute' bg='transparent' left={0}  top='45px' zIndex={1000}  borderRadius='.5rem' >
                         {endWarning.map((war, index) => (
-                            <Flex key={`end-warning-${index}`}>
-                                <Text fontSize={'.8em'}>{t('EndWarning', {id:`${war.id.split('-')[2]}.`, type:war.type})}</Text>
+                            <Flex onClick={() => clickWarning('navigate', war.id)}  cursor={'pointer'} key={`end-warning-${index}`} mt='10px' bg='white' borderWidth={'0px 0px 0px 5px'} borderColor={'#E53E3E'} p='10px' borderRadius={'.5rem'} boxShadow='0 0 10px 1px rgba(0, 0, 0, 0.15)' >
+                                <Text fontSize={'.8em'}>{t('EndWarning', {id:war.id.split('-')[2], type:war.type})}</Text>
                             </Flex>
                         ))} 
+                        {aloneWarning.map((id, index) => (
+                            <Flex onClick={() => clickWarning('navigate', id)}  cursor={'pointer'} key={`end-warning-${index}`} mt='10px' bg='white' borderWidth={'0px 0px 0px 5px'} borderColor={'#E53E3E'} p='10px' borderRadius={'.5rem'} boxShadow='0 0 10px 1px rgba(0, 0, 0, 0.15)' >
+                                <Text fontSize={'.8em'}>{t('AloneWarning', {id:id.split('-')[2]})}</Text>
+                            </Flex>
+                        ))} 
+                        {nodeWarning.map((war, index) => {
+                            const shouldOpenVariables = ((war.type === 'brancher' || war.type === 'extractor') && war?.warningData === undefined)
+                            return(
+                            <Flex onClick={() => clickWarning(shouldOpenVariables?'open-variables':'navigate', war.id)}  cursor={'pointer'} key={`end-warning-${index}`} mt='10px' bg='white' borderWidth={'0px 0px 0px 5px'} borderColor={'#E53E3E'} p='10px' borderRadius={'.5rem'} boxShadow='0 0 10px 1px rgba(0, 0, 0, 0.15)' >
+                                <Text fontSize={'.8em'}>{nodesWarningsTypes(war)}</Text>
+                            </Flex>)
+                        })} 
                     </MotionBox>)}
                 </AnimatePresence>
             </Flex>}

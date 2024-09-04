@@ -10,7 +10,15 @@
     "SaveChanges":"Guardar cambios",
     "Node":"Nodo",
     "Warnings":"Hay {{number}} problemas que solucionar",
-    "EndWarning":"El flujo acaba con el nodo {{id}}. Los flujos solo pueden acabar con nodos con el nodo de terminar, cambiar de flujo o transferir a un agente. ",
+    "EndWarning":"El flujo acaba con el nodo {{id}}. Los flujos solo pueden acabar con nodos con el nodo de terminar, cambiar de flujo o transferir a un agente.",
+    "AloneWarning":"El nodo {{id}}. está aislado, es decir, no proviene de ningún nodo.",
+    "NoVariablesWarning":"No hay variables creadas, por lo que no se pueden establecer condiciones en el nodo {{id}}.",
+    "BranchesWarning":"No hay condiciones en la rama {{index}} del nodo {{id}}.",
+    "NoTransferWarning":"El nodo {{id}}. no transfiere el flujo a ningún agente ni a ningún grupo.",
+    "NoVariablesResetWarning":"No hay variables creadas, por lo que el nodo {{id}}. no puede resetear ninguna.",
+    "NoFlowWarning":"El nodo {{id}}. no redirige el flujo a ningún flujo.",
+    "NoFunctionWarning":"No hay ninguna función seleccionada en el nodo {{id}}.",
+
 
     "create":"Crear flujo",
     "flows_one": "flujo",
